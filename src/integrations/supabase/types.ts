@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      shower_sessions: {
+        Row: {
+          created_at: string
+          current_step_index: number
+          id: string
+          last_update: string
+          session_code: string
+          state: string
+          time_remaining: number
+          total_duration: number
+        }
+        Insert: {
+          created_at?: string
+          current_step_index?: number
+          id?: string
+          last_update?: string
+          session_code: string
+          state?: string
+          time_remaining?: number
+          total_duration?: number
+        }
+        Update: {
+          created_at?: string
+          current_step_index?: number
+          id?: string
+          last_update?: string
+          session_code?: string
+          state?: string
+          time_remaining?: number
+          total_duration?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
