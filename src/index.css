@@ -2,95 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Bathroom/water theme - soft aqua palette */
+    --background: 195 67% 92%;
+    --foreground: 200 60% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 200 60% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 200 60% 20%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Main aqua blue */
+    --primary: 195 80% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft pink for accents */
+    --secondary: 340 60% 85%;
+    --secondary-foreground: 340 60% 30%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 195 30% 85%;
+    --muted-foreground: 200 30% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Sunny yellow for success/celebration */
+    --accent: 45 95% 60%;
+    --accent-foreground: 45 95% 20%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 195 40% 80%;
+    --input: 195 40% 80%;
+    --ring: 195 80% 50%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
+
+    /* Custom shower app colors */
+    --bubble: 195 100% 95%;
+    --tile: 0 0% 98%;
+    --tile-grout: 195 20% 85%;
+    --water: 195 85% 55%;
+    --soap: 340 50% 90%;
+    --shampoo: 280 60% 75%;
+    --success: 140 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Step colors */
+    --step-rinse: 195 85% 55%;
+    --step-shampoo: 280 60% 65%;
+    --step-soap: 340 60% 70%;
+    --step-final: 140 70% 50%;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 200 50% 15%;
+    --foreground: 195 50% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 200 45% 20%;
+    --card-foreground: 195 50% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 200 45% 20%;
+    --popover-foreground: 195 50% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 195 80% 55%;
+    --primary-foreground: 200 50% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 340 40% 35%;
+    --secondary-foreground: 340 40% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 200 30% 25%;
+    --muted-foreground: 195 20% 70%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 45 90% 55%;
+    --accent-foreground: 45 90% 10%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 200 30% 30%;
+    --input: 200 30% 30%;
+    --ring: 195 80% 55%;
   }
 }
 
@@ -100,6 +103,117 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-nunito;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
+
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@layer components {
+  .bubble {
+    @apply absolute rounded-full bg-bubble opacity-60;
+    animation: float-up linear infinite;
+  }
+
+  .tile-pattern {
+    background-image: 
+      linear-gradient(to right, hsl(var(--tile-grout)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--tile-grout)) 1px, transparent 1px);
+    background-size: 60px 60px;
+    background-color: hsl(var(--tile));
+  }
+
+  .big-button {
+    @apply rounded-full font-bold text-2xl md:text-4xl shadow-2xl transition-all duration-200 active:scale-95;
+    box-shadow: 
+      0 8px 0 hsl(var(--primary) / 0.5),
+      0 12px 30px hsl(var(--primary) / 0.3);
+  }
+
+  .big-button:active {
+    box-shadow: 
+      0 2px 0 hsl(var(--primary) / 0.5),
+      0 4px 15px hsl(var(--primary) / 0.3);
+    transform: translateY(4px) scale(0.98);
+  }
+
+  .step-card {
+    @apply rounded-3xl p-6 md:p-8 backdrop-blur-sm transition-all duration-500;
+  }
+
+  .step-card.active {
+    @apply scale-105 shadow-2xl;
+  }
+
+  .progress-ring {
+    transform: rotate(-90deg);
+  }
+
+  .celebration {
+    animation: celebrate 0.6s ease-out;
+  }
+}
+
+@layer utilities {
+  .font-nunito {
+    font-family: 'Nunito', sans-serif;
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-20vh) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes celebrate {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  75% {
+    transform: scale(1.1) rotate(3deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 
+      0 8px 0 hsl(var(--primary) / 0.5),
+      0 12px 30px hsl(var(--primary) / 0.3),
+      0 0 40px hsl(var(--primary) / 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 8px 0 hsl(var(--primary) / 0.5),
+      0 12px 30px hsl(var(--primary) / 0.3),
+      0 0 60px hsl(var(--primary) / 0.4);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
