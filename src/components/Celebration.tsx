@@ -1,0 +1,46 @@
+import { Star, PartyPopper } from "lucide-react";
+
+interface CelebrationProps {
+  onRestart: () => void;
+}
+
+const Celebration = ({ onRestart }: CelebrationProps) => {
+  return (
+    <div className="flex flex-col items-center gap-8 text-center celebration">
+      {/* Stars decoration */}
+      <div className="flex items-center gap-4">
+        <Star className="w-12 h-12 text-accent fill-accent animate-wiggle" />
+        <PartyPopper className="w-20 h-20 text-success" />
+        <Star className="w-12 h-12 text-accent fill-accent animate-wiggle" style={{ animationDelay: "0.2s" }} />
+      </div>
+
+      {/* Success message */}
+      <div>
+        <h1 className="text-4xl md:text-5xl font-bold text-success mb-4">
+          Bravo ! 🎉
+        </h1>
+        <p className="text-2xl md:text-3xl text-foreground mb-2">
+          Tu es tout propre !
+        </p>
+        <p className="text-xl text-muted-foreground">
+          Tu as terminé ta douche comme un champion !
+        </p>
+      </div>
+
+      {/* Duck emoji animation */}
+      <div className="text-8xl animate-bounce">
+        🦆
+      </div>
+
+      {/* Restart button */}
+      <button
+        onClick={onRestart}
+        className="big-button px-12 py-6 bg-success text-success-foreground"
+      >
+        Recommencer
+      </button>
+    </div>
+  );
+};
+
+export default Celebration;
