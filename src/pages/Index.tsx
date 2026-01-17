@@ -33,9 +33,10 @@ const Index = () => {
       {state === "idle" && (
         <button
           onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 p-3 bg-card rounded-full shadow-lg hover:shadow-xl transition-shadow z-10"
+          className="absolute top-4 right-4 p-4 bg-card rounded-full shadow-lg hover:shadow-xl transition-shadow z-50 cursor-pointer touch-manipulation"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
-          <Settings className="w-6 h-6 text-muted-foreground" />
+          <Settings className="w-8 h-8 text-muted-foreground" />
         </button>
       )}
 
