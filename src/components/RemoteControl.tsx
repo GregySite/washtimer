@@ -34,10 +34,11 @@ const RemoteControl = ({
   onLeave,
   onOpenSettings,
 }: RemoteControlProps) => {
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  var formatTime = function(seconds: number) {
+    var mins = Math.floor(seconds / 60);
+    var secs = seconds % 60;
+    var secsStr = secs < 10 ? '0' + secs : String(secs);
+    return mins + ':' + secsStr;
   };
 
   const progress = ((totalDuration - timeRemaining) / totalDuration) * 100;

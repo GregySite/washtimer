@@ -1,0 +1,224 @@
+/* 
+ * Legacy browser fallback styles for iOS 9.3.5 and Safari 9
+ * These styles provide fallback colors when CSS variables are not supported
+ */
+
+/* Fallback when CSS variables are not supported */
+@supports not (--a: 0) {
+  :root,
+  html,
+  body {
+    background-color: #d4f1f9; /* --background fallback */
+    color: #1a4a5c; /* --foreground fallback */
+  }
+
+  body {
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Card fallbacks */
+  .bg-card {
+    background-color: #ffffff;
+  }
+
+  /* Primary color fallbacks */
+  .bg-primary {
+    background-color: #14b8d4;
+  }
+
+  .text-primary {
+    color: #14b8d4;
+  }
+
+  .text-primary-foreground {
+    color: #ffffff;
+  }
+
+  /* Secondary fallbacks */
+  .bg-secondary {
+    background-color: #f5c6d6;
+  }
+
+  /* Muted fallbacks */
+  .bg-muted {
+    background-color: #c5dfe8;
+  }
+
+  .text-muted-foreground {
+    color: #4a7a8a;
+  }
+
+  /* Accent fallbacks */
+  .bg-accent {
+    background-color: #f5c542;
+  }
+
+  /* Success fallbacks */
+  .bg-success {
+    background-color: #22c55e;
+  }
+
+  /* Step color fallbacks */
+  .bg-step-rinse {
+    background-color: #22b8dc;
+  }
+
+  .bg-step-shampoo {
+    background-color: #a855f7;
+  }
+
+  .bg-step-soap {
+    background-color: #ec8faa;
+  }
+
+  .bg-step-final {
+    background-color: #22c55e;
+  }
+
+  /* Border fallbacks */
+  .border {
+    border-color: #b8d9e4;
+  }
+
+  /* Shadow fallbacks */
+  .shadow-lg {
+    -webkit-box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-2xl {
+    -webkit-box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Button fallbacks */
+  .big-button {
+    background-color: #14b8d4;
+    color: #ffffff;
+    border-radius: 9999px;
+    font-weight: 700;
+    -webkit-box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3);
+    box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3);
+  }
+
+  /* Tile pattern fallback */
+  .tile-pattern {
+    background-color: #fafafa;
+    background-image: 
+      -webkit-linear-gradient(right, #d6e8ed 1px, transparent 1px),
+      -webkit-linear-gradient(bottom, #d6e8ed 1px, transparent 1px);
+    background-image: 
+      linear-gradient(to right, #d6e8ed 1px, transparent 1px),
+      linear-gradient(to bottom, #d6e8ed 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Bubble fallback */
+  .bubble {
+    background-color: rgba(224, 247, 255, 0.6);
+    border-radius: 50%;
+  }
+
+  /* Step card fallback */
+  .step-card {
+    border-radius: 24px;
+    padding: 24px;
+    background-color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Ring/Circle progress fallback */
+  .progress-ring {
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+  }
+}
+
+/* Webkit-specific fixes for older Safari */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* Ensure proper flexbox behavior */
+  .flex {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+  }
+
+  .flex-col {
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+  }
+
+  .items-center {
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+
+  .justify-center {
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+  }
+
+  .justify-between {
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+  }
+
+  /* Transitions with webkit prefixes */
+  .transition-all {
+    -webkit-transition: all 0.2s ease;
+    transition: all 0.2s ease;
+  }
+
+  /* Transform with webkit prefix */
+  .scale-95 {
+    -webkit-transform: scale(0.95);
+    transform: scale(0.95);
+  }
+
+  .scale-105 {
+    -webkit-transform: scale(1.05);
+    transform: scale(1.05);
+  }
+
+  /* Animation with webkit prefix */
+  @-webkit-keyframes float-up {
+    0% {
+      -webkit-transform: translateY(100vh) scale(0);
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% {
+      -webkit-transform: translateY(-20vh) scale(1);
+      transform: translateY(-20vh) scale(1);
+      opacity: 0;
+    }
+  }
+
+  @-webkit-keyframes celebrate {
+    0%, 100% { -webkit-transform: scale(1); transform: scale(1); }
+    25% { -webkit-transform: scale(1.1) rotate(-3deg); transform: scale(1.1) rotate(-3deg); }
+    50% { -webkit-transform: scale(1.15); transform: scale(1.15); }
+    75% { -webkit-transform: scale(1.1) rotate(3deg); transform: scale(1.1) rotate(3deg); }
+  }
+
+  @-webkit-keyframes pulse-glow {
+    0%, 100% {
+      -webkit-box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3), 0 0 40px rgba(20, 184, 212, 0.2);
+      box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3), 0 0 40px rgba(20, 184, 212, 0.2);
+    }
+    50% {
+      -webkit-box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3), 0 0 60px rgba(20, 184, 212, 0.4);
+      box-shadow: 0 8px 0 rgba(20, 184, 212, 0.5), 0 12px 30px rgba(20, 184, 212, 0.3), 0 0 60px rgba(20, 184, 212, 0.4);
+    }
+  }
+}
