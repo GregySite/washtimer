@@ -9,7 +9,7 @@ const ProgressRing = ({
   progress, 
   size = 200, 
   strokeWidth = 12,
-  color = "hsl(var(--primary))"
+  color = "#14b8d4" // Fallback color instead of CSS variable
 }: ProgressRingProps) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -20,10 +20,14 @@ const ProgressRing = ({
       className="progress-ring" 
       width={size} 
       height={size}
+      style={{
+        WebkitTransform: 'rotate(-90deg)',
+        transform: 'rotate(-90deg)',
+      }}
     >
       {/* Background circle */}
       <circle
-        stroke="hsl(var(--muted))"
+        stroke="#c5dfe8"
         fill="transparent"
         strokeWidth={strokeWidth}
         r={radius}
@@ -36,12 +40,15 @@ const ProgressRing = ({
         fill="transparent"
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
+        strokeDasharray={String(circumference)}
+        strokeDashoffset={String(offset)}
         r={radius}
         cx={size / 2}
         cy={size / 2}
-        style={{ transition: "stroke-dashoffset 0.5s ease" }}
+        style={{ 
+          WebkitTransition: 'stroke-dashoffset 0.5s ease',
+          transition: 'stroke-dashoffset 0.5s ease',
+        }}
       />
     </svg>
   );

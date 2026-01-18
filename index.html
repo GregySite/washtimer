@@ -2,25 +2,86 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Lovable App</title>
-    <meta name="description" content="Lovable Generated Project" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>TimeWash - Douche Chronométrée</title>
+    <meta name="description" content="Application de douche chronométrée pour les enfants" />
     <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    <meta property="og:title" content="Lovable App" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="TimeWash" />
+    <meta property="og:description" content="Application de douche chronométrée pour les enfants" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <!-- iOS 9 compatibility: CSS Variables polyfill -->
+    <script>
+      // Detect if CSS variables are supported
+      if (!window.CSS || !CSS.supports || !CSS.supports('--a', '0')) {
+        // Apply fallback colors directly for iOS 9
+        document.documentElement.style.cssText = 
+          'background-color: #d4f1f9;' +
+          'color: #1a4a5c;';
+      }
+    </script>
+    <style>
+      /* Fallback styles for browsers without CSS variable support */
+      @supports not (--a: 0) {
+        :root {
+          background-color: #d4f1f9;
+          color: #1a4a5c;
+        }
+        body {
+          background-color: #d4f1f9;
+          color: #1a4a5c;
+          font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+      }
+    </style>
   </head>
 
   <body>
     <div id="root"></div>
+    <script>
+      // Polyfill for Array.from (needed for iOS 9)
+      if (!Array.from) {
+        Array.from = function(arrayLike) {
+          return [].slice.call(arrayLike);
+        };
+      }
+      // Polyfill for Object.assign (needed for iOS 9)
+      if (typeof Object.assign !== 'function') {
+        Object.assign = function(target) {
+          if (target == null) {
+            throw new TypeError('Cannot convert undefined or null to object');
+          }
+          var to = Object(target);
+          for (var i = 1; i < arguments.length; i++) {
+            var nextSource = arguments[i];
+            if (nextSource != null) {
+              for (var nextKey in nextSource) {
+                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                  to[nextKey] = nextSource[nextKey];
+                }
+              }
+            }
+          }
+          return to;
+        };
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
+    <script nomodule>
+      // Fallback message for browsers that don't support ES modules at all
+      document.getElementById('root').innerHTML = 
+        '<div style="padding:40px;text-align:center;font-family:sans-serif;">' +
+        '<h2>Chargement...</h2>' +
+        '<p>Si cette page ne se charge pas, veuillez mettre à jour votre navigateur.</p>' +
+        '</div>';
+    </script>
   </body>
 </html>
+
