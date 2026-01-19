@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ShowerStep } from "@/components/StepDisplay";
 
-const createSteps = (totalDuration: number): ShowerStep[] => {
+var createSteps = function(totalDuration: number): ShowerStep[] {
   // Distribute time: 15% rinse, 25% shampoo, 35% soap, 25% final rinse
-  const rinseTime = Math.floor(totalDuration * 0.15);
-  const shampooTime = Math.floor(totalDuration * 0.25);
-  const soapTime = Math.floor(totalDuration * 0.35);
-  const finalTime = totalDuration - rinseTime - shampooTime - soapTime;
+  var rinseTime = Math.floor(totalDuration * 0.15);
+  var shampooTime = Math.floor(totalDuration * 0.25);
+  var soapTime = Math.floor(totalDuration * 0.35);
+  var finalTime = totalDuration - rinseTime - shampooTime - soapTime;
 
   return [
     {
@@ -50,34 +50,48 @@ interface UseShowerTimerOptions {
   onStateChange?: (state: ShowerState, stepIndex: number, timeRemaining: number) => void;
 }
 
-export const useShowerTimer = (totalDuration: number, options?: UseShowerTimerOptions) => {
-  const [state, setState] = useState<ShowerState>("idle");
-  const [steps, setSteps] = useState<ShowerStep[]>(() => createSteps(totalDuration));
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [totalElapsed, setTotalElapsed] = useState(0);
+export var useShowerTimer = function(totalDuration: number, options?: UseShowerTimerOptions) {
+  var stateResult = useState<ShowerState>("idle");
+  var state = stateResult[0];
+  var setState = stateResult[1];
   
-  const onStateChangeRef = useRef(options?.onStateChange);
+  var stepsResult = useState<ShowerStep[]>(function() { return createSteps(totalDuration); });
+  var steps = stepsResult[0];
+  var setSteps = stepsResult[1];
+  
+  var stepIndexResult = useState(0);
+  var currentStepIndex = stepIndexResult[0];
+  var setCurrentStepIndex = stepIndexResult[1];
+  
+  var timeResult = useState(0);
+  var timeRemaining = timeResult[0];
+  var setTimeRemaining = timeResult[1];
+  
+  var elapsedResult = useState(0);
+  var totalElapsed = elapsedResult[0];
+  var setTotalElapsed = elapsedResult[1];
+  
+  var onStateChangeRef = useRef(options?.onStateChange);
   onStateChangeRef.current = options?.onStateChange;
 
   // Update steps when duration changes
-  useEffect(() => {
+  useEffect(function() {
     setSteps(createSteps(totalDuration));
   }, [totalDuration]);
 
-  const currentStep = steps[currentStepIndex];
+  var currentStep = steps[currentStepIndex];
   
-  const totalProgress = (totalElapsed / totalDuration) * 100;
+  var totalProgress = (totalElapsed / totalDuration) * 100;
 
   // Notify on state changes
-  useEffect(() => {
+  useEffect(function() {
     if (onStateChangeRef.current) {
       onStateChangeRef.current(state, currentStepIndex, timeRemaining);
     }
   }, [state, currentStepIndex, timeRemaining]);
 
-  const start = useCallback(() => {
-    const newSteps = createSteps(totalDuration);
+  var start = useCallback(function() {
+    var newSteps = createSteps(totalDuration);
     setSteps(newSteps);
     setCurrentStepIndex(0);
     setTimeRemaining(newSteps[0].duration);
@@ -85,15 +99,15 @@ export const useShowerTimer = (totalDuration: number, options?: UseShowerTimerOp
     setState("running");
   }, [totalDuration]);
 
-  const pause = useCallback(() => {
+  var pause = useCallback(function() {
     setState("paused");
   }, []);
 
-  const resume = useCallback(() => {
+  var resume = useCallback(function() {
     setState("running");
   }, []);
 
-  const reset = useCallback(() => {
+  var reset = useCallback(function() {
     setState("idle");
     setCurrentStepIndex(0);
     setTimeRemaining(0);
@@ -101,7 +115,7 @@ export const useShowerTimer = (totalDuration: number, options?: UseShowerTimerOp
   }, []);
 
   // Sync state from remote (for host receiving remote commands)
-  const syncFromRemote = useCallback((newState: ShowerState, stepIndex?: number, newTimeRemaining?: number) => {
+  var syncFromRemote = useCallback(function(newState: ShowerState, stepIndex?: number, newTimeRemaining?: number) {
     if (newState === 'running' && state === 'idle') {
       start();
     } else if (newState === 'paused' && state === 'running') {
@@ -117,15 +131,15 @@ export const useShowerTimer = (totalDuration: number, options?: UseShowerTimerOp
     }
   }, [state, start, pause, resume, reset]);
 
-  useEffect(() => {
+  useEffect(function() {
     if (state !== "running") return;
 
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
+    var interval = setInterval(function() {
+      setTimeRemaining(function(prev) {
         if (prev <= 1) {
           // Move to next step
           if (currentStepIndex < steps.length - 1) {
-            setCurrentStepIndex((i) => i + 1);
+            setCurrentStepIndex(function(i) { return i + 1; });
             return steps[currentStepIndex + 1].duration;
           } else {
             setState("completed");
@@ -134,23 +148,23 @@ export const useShowerTimer = (totalDuration: number, options?: UseShowerTimerOp
         }
         return prev - 1;
       });
-      setTotalElapsed((prev) => prev + 1);
+      setTotalElapsed(function(prev) { return prev + 1; });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return function() { clearInterval(interval); };
   }, [state, currentStepIndex, steps]);
 
   return {
-    state,
-    currentStep,
-    currentStepIndex,
-    timeRemaining,
-    totalProgress,
-    totalDuration,
-    start,
-    pause,
-    resume,
-    reset,
-    syncFromRemote,
+    state: state,
+    currentStep: currentStep,
+    currentStepIndex: currentStepIndex,
+    timeRemaining: timeRemaining,
+    totalProgress: totalProgress,
+    totalDuration: totalDuration,
+    start: start,
+    pause: pause,
+    resume: resume,
+    reset: reset,
+    syncFromRemote: syncFromRemote,
   };
 };
