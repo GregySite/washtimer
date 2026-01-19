@@ -49,29 +49,27 @@
     </style>
   </head>
 
-  <body>
-    <div id="root"></div>
+<body>
+    <div id="root">
+      <div style="padding:40px; text-align:center; font-family:sans-serif; background:#d4f1f9; min-height:100vh;">
+        <h2 style="color:#1a4a5c;">🚀 TEST VERSION 2.0 🚀</h2>
+        <p>Si tu vois ce message bleu, le HTML est bien à jour sur l'iPad.</p>
+        <p style="font-size: 0.8em; color: #666;">Tentative de chargement du JavaScript (Legacy)...</p>
+      </div>
+    </div>
+
     <script>
-      // Polyfill for Array.from (needed for iOS 9)
-      if (!Array.from) {
-        Array.from = function(arrayLike) {
-          return [].slice.call(arrayLike);
-        };
-      }
-      // Polyfill for Object.assign (needed for iOS 9)
+      // Polyfill for Array.from et Object.assign (garder tes scripts ici)
+      if (!Array.from) { Array.from = function(arrayLike) { return [].slice.call(arrayLike); }; }
       if (typeof Object.assign !== 'function') {
         Object.assign = function(target) {
-          if (target == null) {
-            throw new TypeError('Cannot convert undefined or null to object');
-          }
+          if (target == null) throw new TypeError('Cannot convert undefined or null to object');
           var to = Object(target);
           for (var i = 1; i < arguments.length; i++) {
             var nextSource = arguments[i];
             if (nextSource != null) {
               for (var nextKey in nextSource) {
-                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
-                  to[nextKey] = nextSource[nextKey];
-                }
+                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) to[nextKey] = nextSource[nextKey];
               }
             }
           }
@@ -79,17 +77,11 @@
         };
       }
     </script>
+
     <script type="module" src="/src/main.tsx"></script>
-	<script nomodule crossorigin id="vite-legacy-polyfill" src="/assets/polyfills-legacy.js"></script>
-	<script nomodule crossorigin id="vite-legacy-entry" src="/assets/index-legacy.js"></script>
-    <script nomodule>
-      // Fallback message for browsers that don't support ES modules at all
-      document.getElementById('root').innerHTML = 
-        '<div style="padding:40px;text-align:center;font-family:sans-serif;">' +
-        '<h2>Chargement...</h2>' +
-        '<p>Si cette page ne se charge pas, veuillez mettre à jour votre navigateur.</p>' +
-        '</div>';
-    </script>
+    
+    <script crossorigin id="vite-legacy-polyfill" src="/assets/polyfills-legacy.js"></script>
+    <script crossorigin id="vite-legacy-entry" src="/assets/index-legacy.js"></script>
   </body>
 </html>
 
