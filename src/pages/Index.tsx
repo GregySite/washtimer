@@ -13,7 +13,7 @@ import { useShowerTimer, ShowerState } from "@/hooks/useShowerTimer";
 import { useShowerSession } from "@/hooks/useShowerSession";
 import { StepConfig } from "@/components/StepEditor";
 
-// Helper for flex styles compatible with iOS 9
+// Styles compatibles iOS 9
 var flexColumnCenter = {
   display: 'flex',
   WebkitBoxOrient: 'vertical' as const,
@@ -33,31 +33,16 @@ var flexColumnCenterJustify = {
 };
 
 var Index = function() {
-  var durationResult = useState(10 * 60);
-  var totalDuration = durationResult[0];
-  var setTotalDuration = durationResult[1];
-  
-  var settingsResult = useState(false);
-  var showSettings = settingsResult[0];
-  var setShowSettings = settingsResult[1];
-  
-  var modeResult = useState<'none' | 'host' | 'remote'>('none');
-  var mode = modeResult[0];
-  var setMode = modeResult[1];
+  var [totalDuration, setTotalDuration] = useState(10 * 60);
+  var [showSettings, setShowSettings] = useState(false);
+  var [mode, setMode] = useState<'none' | 'host' | 'remote'>('none');
 
-  var sessionHook = useShowerSession();
-  var session = sessionHook.session;
-  var sessionCode = sessionHook.sessionCode;
-  var isHost = sessionHook.isHost;
-  var sessionLoading = sessionHook.loading;
-  var sessionError = sessionHook.error;
-  var createSession = sessionHook.createSession;
-  var joinSession = sessionHook.joinSession;
-  var updateSession = sessionHook.updateSession;
-  var leaveSession = sessionHook.leaveSession;
-  var DEFAULT_STEPS = sessionHook.DEFAULT_STEPS;
+  var { 
+    session, sessionCode, isHost, loading, error, 
+    createSession, joinSession, updateSession, leaveSession, DEFAULT_STEPS 
+  } = useShowerSession();
 
-  // Callback to sync state to database
+  // iPad envoie son état au smartphone
   var handleStateChange = useCallback(function(state: ShowerState, stepIndex: number, timeRemaining: number) {
     if (isHost && session) {
       updateSession({
@@ -72,71 +57,31 @@ var Index = function() {
     onStateChange: handleStateChange,
   });
 
-  // Sync duration to session when changed
-  useEffect(function() {
-    if (isHost && session) {
-      updateSession({ total_duration: totalDuration });
-    }
-  }, [totalDuration, isHost, session, updateSession]);
+  // Gestion des étapes (Smartphone vers iPad)
+  var steps = (session && session.steps) ? session.steps : DEFAULT_STEPS;
 
-  // Sync state from session (for remote mode OR host receiving updates)
+  // SYNCHRONISATION : Évite le clignotement
   useEffect(function() {
     if (!session) return;
     
-    // For remote: sync everything from session
     if (!isHost) {
       setTotalDuration(session.total_duration);
     }
     
-    // For host: sync commands from remote (when state is different)
+    // L'iPad n'écoute que les ordres de changement d'état (Play/Pause/Stop)
     if (isHost && session.state !== timer.state) {
       timer.syncFromRemote(session.state as ShowerState);
     }
-  }, [session, isHost, timer]);
+  }, [session?.state, isHost]); // On ne surveille que l'état pour éviter les boucles de temps
 
-  // Handle host mode
+  // Fonctions de contrôle
   var handleHostMode = function() {
     createSession(totalDuration).then(function(code) {
-      if (code) {
-        setMode('host');
-      }
+      if (code) setMode('host');
     });
   };
 
-  // Handle remote commands
-  var handleRemoteStart = function() {
-    updateSession({ state: 'running' });
-  };
-
-  var handleRemotePause = function() {
-    updateSession({ state: 'paused' });
-  };
-
-  var handleRemoteResume = function() {
-    updateSession({ state: 'running' });
-  };
-
-  var handleRemoteStop = function() {
-    if (session) {
-      var firstStepDuration = session.steps[0]?.duration || 90;
-      updateSession({ state: 'idle', current_step_index: 0, time_remaining: firstStepDuration });
-    }
-  };
-
-  var handleRemoteReset = function() {
-    if (session) {
-      var firstStepDuration = session.steps[0]?.duration || 90;
-      updateSession({ state: 'idle', current_step_index: 0, time_remaining: firstStepDuration });
-    }
-  };
-
-  var handleLeave = function() {
-    leaveSession();
-    setMode('none');
-  };
-
   var handleStepsChange = function(newSteps: StepConfig[]) {
-    // Calculate new total duration
     var newTotal = 0;
     for (var i = 0; i < newSteps.length; i++) {
       newTotal += newSteps[i].duration;
@@ -144,24 +89,12 @@ var Index = function() {
     updateSession({ steps: newSteps, total_duration: newTotal });
   };
 
-  var handleTotalDurationChange = function(newDuration: number) {
-    updateSession({ total_duration: newDuration });
-  };
-
-  // Show join screen if in remote mode but not connected
+  // Rendu : Écran de connexion Remote
   if (mode === 'remote' && !session) {
-    return (
-      <JoinSession 
-        onJoin={function(code) {
-          return joinSession(code);
-        }}
-        loading={sessionLoading}
-        error={sessionError}
-      />
-    );
+    return <JoinSession onJoin={joinSession} loading={loading} error={error} />;
   }
 
-  // Show remote control if connected as remote
+  // Rendu : Interface Télécommande (Smartphone)
   if (session && !isHost) {
     return (
       <RemoteControl
@@ -169,246 +102,60 @@ var Index = function() {
         currentStepIndex={session.current_step_index}
         timeRemaining={session.time_remaining}
         totalDuration={session.total_duration}
-        steps={session.steps || DEFAULT_STEPS}
-        onStart={handleRemoteStart}
-        onPause={handleRemotePause}
-        onResume={handleRemoteResume}
-        onStop={handleRemoteStop}
-        onReset={handleRemoteReset}
-        onLeave={handleLeave}
+        steps={steps}
+        onStart={() => updateSession({ state: 'running' })}
+        onPause={() => updateSession({ state: 'paused' })}
+        onResume={() => updateSession({ state: 'running' })}
+        onStop={() => updateSession({ state: 'idle', current_step_index: 0 })}
+        onReset={() => updateSession({ state: 'idle', current_step_index: 0 })}
+        onLeave={() => { leaveSession(); setMode('none'); }}
         onStepsChange={handleStepsChange}
-        onTotalDurationChange={handleTotalDurationChange}
+        onTotalDurationChange={(d) => updateSession({ total_duration: d })}
       />
     );
   }
 
-  // Mode selection screen
+  // Rendu : Sélection du mode
   if (mode === 'none') {
     return (
-      <div 
-        className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
-        style={{ ...flexColumnCenterJustify, minHeight: '100vh', padding: '1rem', overflow: 'hidden', position: 'relative' }}
-      >
-        <TileBackground />
-        <Bubbles />
-        
-        <div 
-          className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full"
-          style={{ ...flexColumnCenter, position: 'relative', zIndex: 10, maxWidth: '28rem', width: '100%' }}
-        >
-          <div className="text-center" style={{ textAlign: 'center' }}>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2" style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              Ma Douche 🚿
-            </h1>
-            <p className="text-xl text-muted-foreground" style={{ fontSize: '1.25rem' }}>
-              Comment veux-tu utiliser l'app ?
-            </p>
-          </div>
-
-          <div className="w-full space-y-4" style={{ width: '100%' }}>
-            <button
-              onClick={handleHostMode}
-              className="w-full py-6 bg-primary text-primary-foreground rounded-3xl font-bold text-xl flex flex-col items-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
-              style={{ 
-                ...flexColumnCenter,
-                width: '100%', 
-                padding: '1.5rem 0', 
-                backgroundColor: 'hsl(195, 80%, 50%)', 
-                color: 'white', 
-                borderRadius: '1.5rem', 
-                fontWeight: 'bold', 
-                fontSize: '1.25rem',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <span style={{ fontSize: '2rem' }}>📱➡️🖥️</span>
-              <span>Mode iPad (enfant)</span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 'normal', opacity: 0.8 }}>Affiche le timer de douche</span>
-            </button>
-
-            <button
-              onClick={function() { setMode('remote'); }}
-              className="w-full py-6 bg-secondary text-secondary-foreground rounded-3xl font-bold text-xl flex flex-col items-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
-              style={{ 
-                ...flexColumnCenter,
-                width: '100%', 
-                padding: '1.5rem 0', 
-                backgroundColor: 'hsl(340, 60%, 85%)', 
-                color: 'hsl(340, 60%, 30%)', 
-                borderRadius: '1.5rem', 
-                fontWeight: 'bold', 
-                fontSize: '1.25rem',
-                border: 'none',
-                cursor: 'pointer',
-                marginTop: '1rem'
-              }}
-            >
-              <Wifi className="w-8 h-8" style={{ width: '2rem', height: '2rem' }} />
-              <span>Mode Télécommande</span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 'normal', opacity: 0.8 }}>Contrôle depuis mon téléphone</span>
-            </button>
-          </div>
+      <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden" style={flexColumnCenterJustify}>
+        <TileBackground /><Bubbles />
+        <div className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full" style={flexColumnCenter}>
+          <h1 className="text-4xl font-bold">Ma Douche 🚿</h1>
+          <button onClick={handleHostMode} className="w-full py-6 bg-blue-500 text-white rounded-3xl font-bold text-xl shadow-lg">Mode iPad (enfant)</button>
+          <button onClick={() => setMode('remote')} className="w-full py-6 bg-pink-200 text-pink-800 rounded-3xl font-bold text-xl shadow-lg">Mode Télécommande</button>
         </div>
       </div>
     );
   }
 
-  // Host mode - main shower interface
+  // Rendu : Mode iPad (Host)
   return (
-    <div 
-      className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
-      style={{ ...flexColumnCenterJustify, minHeight: '100vh', padding: '1rem', overflow: 'hidden', position: 'relative' }}
-    >
-      <TileBackground />
-      <Bubbles />
-
-      {/* Settings button */}
-      {timer.state === "idle" && (
-        <button
-          onClick={function() { setShowSettings(true); }}
-          className="absolute top-4 right-4 p-4 bg-card rounded-full shadow-lg hover:shadow-xl transition-shadow z-50 cursor-pointer touch-manipulation"
-          style={{ 
-            position: 'absolute', 
-            top: '1rem', 
-            right: '1rem', 
-            padding: '1rem', 
-            backgroundColor: 'white', 
-            borderRadius: '50%', 
-            zIndex: 50,
-            border: 'none',
-            cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          <Settings className="w-8 h-8 text-muted-foreground" style={{ width: '2rem', height: '2rem' }} />
-        </button>
-      )}
-
-      {/* Session code display */}
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden" style={flexColumnCenterJustify}>
+      <TileBackground /><Bubbles />
+      
       {sessionCode && timer.state === "idle" && (
-        <div className="absolute top-4 left-4 z-50" style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 50 }}>
-          <SessionCode code={sessionCode} />
-        </div>
+        <div className="absolute top-4 left-4 z-50"><SessionCode code={sessionCode} /></div>
       )}
 
-      {/* Leave button */}
-      <button
-        onClick={handleLeave}
-        className="absolute bottom-4 left-4 p-3 bg-card/80 rounded-full shadow-lg z-50 text-muted-foreground hover:text-foreground transition-colors"
-        style={{ 
-          position: 'absolute', 
-          bottom: '1rem', 
-          left: '1rem', 
-          padding: '0.75rem', 
-          backgroundColor: 'rgba(255,255,255,0.8)', 
-          borderRadius: '9999px', 
-          zIndex: 50,
-          border: 'none',
-          cursor: 'pointer'
-        }}
-      >
-        Quitter
-      </button>
-
-      {/* Main content */}
-      <div 
-        className="relative z-10 flex flex-col items-center justify-center flex-1 w-full max-w-lg"
-        style={{ 
-          ...flexColumnCenterJustify,
-          WebkitBoxFlex: 1,
-          WebkitFlex: 1,
-          flex: 1,
-          position: 'relative',
-          zIndex: 10,
-          width: '100%',
-          maxWidth: '32rem'
-        }}
-      >
-        {timer.state === "idle" && (
-          <div 
-            className="flex flex-col items-center gap-8"
-            style={flexColumnCenter}
-          >
-            <div className="text-center" style={{ textAlign: 'center' }}>
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2" style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                Ma Douche 🚿
-              </h1>
-              <p className="text-xl text-muted-foreground" style={{ fontSize: '1.25rem' }}>
-                {Math.floor(totalDuration / 60)} minutes de douche
-              </p>
-            </div>
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 w-full max-w-lg" style={flexColumnCenter}>
+        {timer.state === "idle" ? (
+          <div style={flexColumnCenter}>
+            <h1 className="text-4xl font-bold mb-4">Prêt pour la douche ?</h1>
             <StartButton onClick={timer.start} />
-            <p className="text-muted-foreground text-center" style={{ textAlign: 'center' }}>
-              Appuie sur le bouton pour commencer !
-            </p>
+          </div>
+        ) : (
+          <div style={flexColumnCenter} className="w-full">
+            <StepDisplay step={timer.currentStep} timeRemaining={timer.timeRemaining} totalProgress={timer.totalProgress} />
+            <div className="flex gap-4 mt-8">
+               <button onClick={timer.state === "running" ? timer.pause : timer.resume} className="p-6 bg-white rounded-full shadow-xl">
+                  {timer.state === "running" ? <Pause /> : <Play />}
+               </button>
+            </div>
           </div>
         )}
-
-        {(timer.state === "running" || timer.state === "paused") && timer.currentStep && (
-          <div 
-            className="flex flex-col items-center gap-6 w-full"
-            style={{ ...flexColumnCenter, width: '100%' }}
-          >
-            <StepDisplay
-              step={timer.currentStep}
-              timeRemaining={timer.timeRemaining}
-              totalProgress={timer.totalProgress}
-            />
-
-            <button
-              onClick={timer.state === "running" ? timer.pause : timer.resume}
-              className="big-button w-20 h-20 bg-secondary text-secondary-foreground flex items-center justify-center"
-              style={{ 
-                ...flexColumnCenterJustify,
-                width: '5rem', 
-                height: '5rem', 
-                backgroundColor: 'hsl(340, 60%, 85%)', 
-                color: 'hsl(340, 60%, 30%)',
-                borderRadius: '50%',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {timer.state === "running" ? (
-                <Pause className="w-8 h-8" style={{ width: '2rem', height: '2rem' }} />
-              ) : (
-                <Play className="w-8 h-8 ml-1" style={{ width: '2rem', height: '2rem', marginLeft: '0.25rem' }} />
-              )}
-            </button>
-
-            <button
-              onClick={timer.reset}
-              className="text-muted-foreground underline"
-              style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              Arrêter la douche
-            </button>
-          </div>
-        )}
-
         {timer.state === "completed" && <Celebration onRestart={timer.reset} />}
       </div>
-
-      <div 
-        className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-primary/10 to-transparent z-0"
-        style={{ 
-          position: 'absolute', 
-          bottom: 0, 
-          left: 0, 
-          right: 0, 
-          height: '5rem',
-          background: 'linear-gradient(to top, hsla(195, 80%, 50%, 0.1), transparent)',
-          zIndex: 0
-        }}
-      />
-
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={function() { setShowSettings(false); }}
-        totalDuration={totalDuration}
-        onDurationChange={setTotalDuration}
-      />
     </div>
   );
 };
