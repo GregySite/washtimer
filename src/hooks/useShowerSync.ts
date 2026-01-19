@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Step } from "@/lib/constants";
-import { playBing, playFinalTada } from "@/lib/sounds";
 
 export function useShowerSync(mode: 'parent' | 'child') {
   const [sessionCode, setSessionCode] = useState<string>("");
@@ -10,63 +9,54 @@ export function useShowerSync(mode: 'parent' | 'child') {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  // 1. Initialisation
+  // 1. Initialisation ENFANT : Créer la session AVANT d'afficher le code
   useEffect(() => {
     if (mode === 'child' && !sessionCode) {
-      const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-      setSessionCode(newCode);
-      supabase.from('shower_sessions').insert([{ session_code: newCode, status: 'setup', steps: [] }]).then();
+      const generateSession = async () => {
+        const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+        console.log("Tentative de création de session avec le code:", newCode);
+        
+        const { error } = await supabase
+          .from('shower_sessions')
+          .insert([{ 
+            session_code: newCode, 
+            status: 'setup', 
+            steps: [],
+            current_step_index: 0 
+          }]);
+
+        if (error) {
+          console.error("Erreur Supabase à l'insertion:", error.message);
+          // Si erreur, on réessaie dans 2 secondes
+          setTimeout(generateSession, 2000);
+        } else {
+          setSessionCode(newCode);
+          console.log("Session validée dans la base !");
+        }
+      };
+      generateSession();
     }
-  }, [mode]);
+  }, [mode, sessionCode]);
 
   // 2. Écoute en temps réel
   useEffect(() => {
     if (!sessionCode) return;
     const channel = supabase
-      .channel('shower_sync')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shower_sessions', filter: `session_code=eq.${sessionCode}` }, 
-      (payload) => {
+      .channel(`shower_${sessionCode}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'shower_sessions', 
+        filter: `session_code=eq.${sessionCode}` 
+      }, (payload) => {
         const data = payload.new;
-        setStatus(data.status);
-        if (data.steps) setSteps(data.steps.filter((s: Step) => s.active));
-        setCurrentStepIndex(data.current_step_index);
+        if (data.status) setStatus(data.status);
+        if (data.steps) setSteps(data.steps.filter((s: any) => s.active));
+        if (data.current_step_index !== undefined) setCurrentStepIndex(data.current_step_index);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [sessionCode]);
-
-  // 3. Logique du Timer (uniquement pour l'enfant)
-  useEffect(() => {
-    if (mode === 'child' && status === 'running' && steps[currentStepIndex]) {
-      setTimeLeft(steps[currentStepIndex].duration);
-    }
-  }, [currentStepIndex, status, mode]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (mode === 'child' && status === 'running' && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleStepEnd();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [timeLeft, status, mode]);
-
-  const handleStepEnd = () => {
-    if (currentStepIndex < steps.length - 1) {
-      playBing();
-      updateSession({ current_step_index: currentStepIndex + 1 });
-    } else {
-      playFinalTada();
-      updateSession({ status: 'finished' });
-    }
-  };
 
   const updateSession = async (newData: any) => {
     if (!sessionCode) return;
@@ -74,32 +64,21 @@ export function useShowerSync(mode: 'parent' | 'child') {
   };
 
   const joinSession = async (code: string) => {
-  try {
+    const cleanCode = code.trim().toUpperCase();
     const { data, error } = await supabase
       .from('shower_sessions')
       .select('*')
-      .eq('session_code', code.toUpperCase())
-      .maybeSingle(); // Plus robuste que .single()
+      .eq('session_code', cleanCode)
+      .maybeSingle();
 
-    if (error) {
-      console.error("Erreur Supabase:", error.message);
+    if (error || !data) {
+      console.error("Session non trouvée:", error?.message);
       return false;
     }
-
-    if (data) {
-      setSessionCode(code.toUpperCase());
-      // On force la mise à jour du status pour dire au Parent qu'il est connecté
-      await updateSession({ status: 'waiting' }); 
-      return true;
-    } else {
-      alert("Code non trouvé. Vérifie le code sur l'autre appareil.");
-      return false;
-    }
-  } catch (err) {
-    console.error("Erreur critique:", err);
-    return false;
-  }
-};
+    setSessionCode(cleanCode);
+    setStatus(data.status);
+    return true;
+  };
 
   return { sessionCode, status, steps, currentStepIndex, timeLeft, updateSession, joinSession };
 }
