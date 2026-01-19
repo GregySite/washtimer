@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface ShowerSession {
   id: string;
@@ -12,14 +11,19 @@ interface ShowerSession {
   last_update: string;
 }
 
-// Génère un code de session court et lisible
-const generateSessionCode = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+// Get base URL for edge functions
+const getEdgeFunctionUrl = () => {
+  var supabaseUrl = '';
+  try {
+    // @ts-ignore - VITE env
+    supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  } catch (e) {
+    supabaseUrl = '';
   }
-  return code;
+  if (!supabaseUrl) {
+    supabaseUrl = 'https://oezvahfwwkqsehsbcrxh.supabase.co';
+  }
+  return supabaseUrl + '/functions/v1/session';
 };
 
 export const useShowerSession = () => {
@@ -28,38 +32,41 @@ export const useShowerSession = () => {
   const [isHost, setIsHost] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Créer une nouvelle session (iPad - hôte)
-  const createSession = useCallback(async (totalDuration: number) => {
+  const createSession = useCallback(async function(totalDuration: number) {
     setLoading(true);
     setError(null);
     
     try {
-      const code = generateSessionCode();
+      var response = await fetch(getEdgeFunctionUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total_duration: totalDuration }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session');
+      }
+
+      var result = await response.json();
+      var sessionData = result.session as ShowerSession;
       
-      const { data, error: insertError } = await supabase
-        .from('shower_sessions')
-        .insert({
-          session_code: code,
-          state: 'idle',
-          current_step_index: 0,
-          time_remaining: totalDuration,
-          total_duration: totalDuration,
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      setSession(data as ShowerSession);
-      setSessionCode(code);
+      setSession(sessionData);
+      setSessionCode(sessionData.session_code);
       setIsHost(true);
       
       // Stocker le code localement
-      localStorage.setItem('shower_session_code', code);
-      localStorage.setItem('shower_is_host', 'true');
+      try {
+        localStorage.setItem('shower_session_code', sessionData.session_code);
+        localStorage.setItem('shower_session_id', sessionData.id);
+        localStorage.setItem('shower_is_host', 'true');
+      } catch (e) {
+        // localStorage might not be available
+      }
       
-      return code;
+      return sessionData.session_code;
     } catch (err) {
       console.error('Error creating session:', err);
       setError('Erreur lors de la création de la session');
@@ -70,29 +77,40 @@ export const useShowerSession = () => {
   }, []);
 
   // Rejoindre une session existante (smartphone - télécommande)
-  const joinSession = useCallback(async (code: string) => {
+  const joinSession = useCallback(async function(code: string) {
     setLoading(true);
     setError(null);
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('shower_sessions')
-        .select()
-        .eq('session_code', code.toUpperCase())
-        .maybeSingle();
+      var url = getEdgeFunctionUrl() + '?code=' + encodeURIComponent(code.toUpperCase());
+      var response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-      if (fetchError) throw fetchError;
-      if (!data) {
+      if (response.status === 404) {
         setError('Session non trouvée');
         return false;
       }
 
-      setSession(data as ShowerSession);
+      if (!response.ok) {
+        throw new Error('Failed to fetch session');
+      }
+
+      var result = await response.json();
+      var sessionData = result.session as ShowerSession;
+
+      setSession(sessionData);
       setSessionCode(code.toUpperCase());
       setIsHost(false);
       
-      localStorage.setItem('shower_session_code', code.toUpperCase());
-      localStorage.setItem('shower_is_host', 'false');
+      try {
+        localStorage.setItem('shower_session_code', code.toUpperCase());
+        localStorage.setItem('shower_session_id', sessionData.id);
+        localStorage.setItem('shower_is_host', 'false');
+      } catch (e) {
+        // localStorage might not be available
+      }
       
       return true;
     } catch (err) {
@@ -105,74 +123,100 @@ export const useShowerSession = () => {
   }, []);
 
   // Mettre à jour l'état de la session
-  const updateSession = useCallback(async (updates: Partial<ShowerSession>) => {
+  const updateSession = useCallback(async function(updates: Partial<ShowerSession>) {
     if (!session) return;
     
     try {
-      const { error: updateError } = await supabase
-        .from('shower_sessions')
-        .update({
-          ...updates,
-          last_update: new Date().toISOString(),
-        })
-        .eq('id', session.id);
+      var url = getEdgeFunctionUrl() + '?id=' + encodeURIComponent(session.id);
+      var response = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        throw new Error('Failed to update session');
+      }
+
+      var result = await response.json();
+      setSession(result.session as ShowerSession);
     } catch (err) {
       console.error('Error updating session:', err);
     }
   }, [session]);
 
   // Quitter la session
-  const leaveSession = useCallback(() => {
+  const leaveSession = useCallback(function() {
+    // Cleanup subscription
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
     setSession(null);
     setSessionCode(null);
     setIsHost(false);
-    localStorage.removeItem('shower_session_code');
-    localStorage.removeItem('shower_is_host');
+    
+    try {
+      localStorage.removeItem('shower_session_code');
+      localStorage.removeItem('shower_session_id');
+      localStorage.removeItem('shower_is_host');
+    } catch (e) {
+      // localStorage might not be available
+    }
   }, []);
 
   // S'abonner aux mises à jour en temps réel
-  useEffect(() => {
+  useEffect(function() {
     if (!session) return;
 
-    let channel: RealtimeChannel;
+    // Cleanup previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
-    const setupSubscription = () => {
-      channel = supabase
-        .channel(`shower_session_${session.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'shower_sessions',
-            filter: `id=eq.${session.id}`,
-          },
-          (payload) => {
-            console.log('Session updated:', payload.new);
-            setSession(payload.new as ShowerSession);
-          }
-        )
-        .subscribe();
-    };
+    var channel = supabase
+      .channel('shower_session_' + session.id)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shower_sessions',
+          filter: 'id=eq.' + session.id,
+        },
+        function(payload) {
+          console.log('Session updated:', payload.new);
+          setSession(payload.new as ShowerSession);
+        }
+      )
+      .subscribe();
 
-    setupSubscription();
+    channelRef.current = channel;
 
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
+    return function() {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
   }, [session?.id]);
 
   // Restaurer la session au chargement
-  useEffect(() => {
-    const savedCode = localStorage.getItem('shower_session_code');
-    const savedIsHost = localStorage.getItem('shower_is_host') === 'true';
+  useEffect(function() {
+    var savedCode = '';
+    var savedIsHost = false;
+    
+    try {
+      savedCode = localStorage.getItem('shower_session_code') || '';
+      savedIsHost = localStorage.getItem('shower_is_host') === 'true';
+    } catch (e) {
+      // localStorage might not be available
+      return;
+    }
     
     if (savedCode) {
-      joinSession(savedCode).then((success) => {
+      joinSession(savedCode).then(function(success) {
         if (success) {
           setIsHost(savedIsHost);
         }
@@ -181,14 +225,14 @@ export const useShowerSession = () => {
   }, [joinSession]);
 
   return {
-    session,
-    sessionCode,
-    isHost,
-    loading,
-    error,
-    createSession,
-    joinSession,
-    updateSession,
-    leaveSession,
+    session: session,
+    sessionCode: sessionCode,
+    isHost: isHost,
+    loading: loading,
+    error: error,
+    createSession: createSession,
+    joinSession: joinSession,
+    updateSession: updateSession,
+    leaveSession: leaveSession,
   };
 };

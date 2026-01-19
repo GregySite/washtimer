@@ -1,1 +1,4 @@
 project_id = "oezvahfwwkqsehsbcrxh"
+
+[functions.session]
+verify_jwt = false

@@ -13,17 +13,22 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  // For development: transpile to ES2015 for compatibility
+  esbuild: {
+    target: 'es2015',
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
     // Support for iOS 9.3.5 (Safari 9) and other legacy browsers
     legacy({
-      targets: ["iOS >= 9", "Safari >= 9", "Chrome >= 49", "Firefox >= 52"],
+      targets: ["iOS >= 9", "Safari >= 9", "Chrome >= 49", "Firefox >= 52", "defaults"],
       additionalLegacyPolyfills: [
         "regenerator-runtime/runtime",
         "core-js/stable",
       ],
       modernPolyfills: true,
+      renderLegacyChunks: true,
     }),
   ].filter(Boolean),
   resolve: {
@@ -34,5 +39,11 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "es2015",
     cssTarget: "safari9",
+    // Ensure all code is transpiled for older browsers
+    minify: 'terser',
+    terserOptions: {
+      ecma: 5,
+      safari10: true,
+    },
   },
 }));
