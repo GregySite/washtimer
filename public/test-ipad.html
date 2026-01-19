@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Survie iPad</title>
+    <style>
+        body { background: #d4f1f9; font-family: sans-serif; text-align: center; padding: 20px; }
+        #box { border: 5px solid #1a4a5c; padding: 20px; border-radius: 20px; background: white; margin-top: 20px; }
+        .btn { padding: 20px; background: #1a4a5c; color: white; border: none; border-radius: 10px; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <h1>L'iPad répond ! 🚿</h1>
+    <div id="box">
+        <p id="status">En attente de JavaScript...</p>
+        <h2 id="timer">00:00</h2>
+        <p id="step">---</p>
+    </div>
+    <script>
+        // Si ce script s'exécute, le texte changera
+        document.getElementById('status').innerHTML = "Le JavaScript de base fonctionne !";
+        
+        var count = 0;
+        setInterval(function() {
+            count++;
+            document.getElementById('timer').innerHTML = "Compteur : " + count + "s";
+        }, 1000);
+    </script>
+</body>
+</html>
