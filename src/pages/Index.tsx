@@ -11,6 +11,7 @@ import JoinSession from "@/components/JoinSession";
 import RemoteControl from "@/components/RemoteControl";
 import { useShowerTimer, ShowerState } from "@/hooks/useShowerTimer";
 import { useShowerSession } from "@/hooks/useShowerSession";
+import { StepConfig } from "@/components/StepEditor";
 
 // Helper for flex styles compatible with iOS 9
 var flexColumnCenter = {
@@ -54,6 +55,7 @@ var Index = function() {
   var joinSession = sessionHook.joinSession;
   var updateSession = sessionHook.updateSession;
   var leaveSession = sessionHook.leaveSession;
+  var DEFAULT_STEPS = sessionHook.DEFAULT_STEPS;
 
   // Callback to sync state to database
   var handleStateChange = useCallback(function(state: ShowerState, stepIndex: number, timeRemaining: number) {
@@ -115,16 +117,35 @@ var Index = function() {
   };
 
   var handleRemoteStop = function() {
-    updateSession({ state: 'idle', current_step_index: 0, time_remaining: 0 });
+    if (session) {
+      var firstStepDuration = session.steps[0]?.duration || 90;
+      updateSession({ state: 'idle', current_step_index: 0, time_remaining: firstStepDuration });
+    }
   };
 
   var handleRemoteReset = function() {
-    updateSession({ state: 'idle', current_step_index: 0, time_remaining: 0 });
+    if (session) {
+      var firstStepDuration = session.steps[0]?.duration || 90;
+      updateSession({ state: 'idle', current_step_index: 0, time_remaining: firstStepDuration });
+    }
   };
 
   var handleLeave = function() {
     leaveSession();
     setMode('none');
+  };
+
+  var handleStepsChange = function(newSteps: StepConfig[]) {
+    // Calculate new total duration
+    var newTotal = 0;
+    for (var i = 0; i < newSteps.length; i++) {
+      newTotal += newSteps[i].duration;
+    }
+    updateSession({ steps: newSteps, total_duration: newTotal });
+  };
+
+  var handleTotalDurationChange = function(newDuration: number) {
+    updateSession({ total_duration: newDuration });
   };
 
   // Show join screen if in remote mode but not connected
@@ -143,29 +164,21 @@ var Index = function() {
   // Show remote control if connected as remote
   if (session && !isHost) {
     return (
-      <>
-        <RemoteControl
-          state={session.state as ShowerState}
-          currentStepIndex={session.current_step_index}
-          timeRemaining={session.time_remaining}
-          totalDuration={session.total_duration}
-          onStart={handleRemoteStart}
-          onPause={handleRemotePause}
-          onResume={handleRemoteResume}
-          onStop={handleRemoteStop}
-          onReset={handleRemoteReset}
-          onLeave={handleLeave}
-          onOpenSettings={function() { setShowSettings(true); }}
-        />
-        <SettingsModal
-          isOpen={showSettings}
-          onClose={function() { setShowSettings(false); }}
-          totalDuration={session.total_duration}
-          onDurationChange={function(duration) {
-            updateSession({ total_duration: duration });
-          }}
-        />
-      </>
+      <RemoteControl
+        state={session.state as ShowerState}
+        currentStepIndex={session.current_step_index}
+        timeRemaining={session.time_remaining}
+        totalDuration={session.total_duration}
+        steps={session.steps || DEFAULT_STEPS}
+        onStart={handleRemoteStart}
+        onPause={handleRemotePause}
+        onResume={handleRemoteResume}
+        onStop={handleRemoteStop}
+        onReset={handleRemoteReset}
+        onLeave={handleLeave}
+        onStepsChange={handleStepsChange}
+        onTotalDurationChange={handleTotalDurationChange}
+      />
     );
   }
 
