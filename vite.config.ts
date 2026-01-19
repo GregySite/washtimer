@@ -4,26 +4,32 @@ import path from "path";
 import legacy from "@vitejs/plugin-legacy";
 
 export default defineConfig({
-  server: {
-    host: "::",
-    port: 8080,
-  },
   plugins: [
     react(),
-    // C'est ce plugin qui va traduire le code moderne pour le vieil iPad
     legacy({
-      targets: ['defaults', 'not IE 11', 'iOS >= 9'],
-      additionalLegacyPolyfills: ['regenerator-runtime/runtime']
-    })
+      // On cible spécifiquement les très vieux navigateurs
+      targets: ["ios >= 9", "safari >= 9"],
+      additionalLegacyPolyfills: ["regenerator-runtime/runtime"],
+      renderLegacyChunks: true,
+      polyfills: [
+        'es.symbol',
+        'es.array.filter',
+        'es.promise',
+        'es.object.assign',
+        'es.map',
+        'es.set',
+        'es.array.for-each',
+        'es.object.keys'
+      ]
+    }),
   ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Force la compilation CSS pour être plus compatible
   build: {
-    target: "es2015",
-    cssTarget: "chrome61", // Support CSS safe
+    target: "es5", // On force la sortie en vieux JavaScript
+    cssTarget: "chrome61", // Pour éviter les soucis de CSS modernes
   }
 });
