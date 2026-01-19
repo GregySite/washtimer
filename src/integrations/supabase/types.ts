@@ -22,6 +22,7 @@ export type Database = {
           last_update: string
           session_code: string
           state: string
+          steps: Json | null
           time_remaining: number
           total_duration: number
         }
@@ -32,6 +33,7 @@ export type Database = {
           last_update?: string
           session_code: string
           state?: string
+          steps?: Json | null
           time_remaining?: number
           total_duration?: number
         }
@@ -42,6 +44,7 @@ export type Database = {
           last_update?: string
           session_code?: string
           state?: string
+          steps?: Json | null
           time_remaining?: number
           total_duration?: number
         }
