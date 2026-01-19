@@ -74,13 +74,32 @@ export function useShowerSync(mode: 'parent' | 'child') {
   };
 
   const joinSession = async (code: string) => {
-    const { data } = await supabase.from('shower_sessions').select('*').eq('session_code', code.toUpperCase()).single();
+  try {
+    const { data, error } = await supabase
+      .from('shower_sessions')
+      .select('*')
+      .eq('session_code', code.toUpperCase())
+      .maybeSingle(); // Plus robuste que .single()
+
+    if (error) {
+      console.error("Erreur Supabase:", error.message);
+      return false;
+    }
+
     if (data) {
       setSessionCode(code.toUpperCase());
+      // On force la mise à jour du status pour dire au Parent qu'il est connecté
+      await updateSession({ status: 'waiting' }); 
       return true;
+    } else {
+      alert("Code non trouvé. Vérifie le code sur l'autre appareil.");
+      return false;
     }
+  } catch (err) {
+    console.error("Erreur critique:", err);
     return false;
-  };
+  }
+};
 
   return { sessionCode, status, steps, currentStepIndex, timeLeft, updateSession, joinSession };
 }
