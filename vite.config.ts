@@ -1,49 +1,29 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import legacy from "@vitejs/plugin-legacy";
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
     host: "::",
     port: 8080,
-    hmr: {
-      overlay: false,
-    },
-  },
-  // For development: transpile to ES2015 for compatibility
-  esbuild: {
-    target: 'es2015',
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
-    // Support for iOS 9.3.5 (Safari 9) and other legacy browsers
+    // C'est ce plugin qui va traduire le code moderne pour le vieil iPad
     legacy({
-      targets: ["iOS >= 9", "Safari >= 9", "Chrome >= 49", "Firefox >= 52", "defaults"],
-      additionalLegacyPolyfills: [
-        "regenerator-runtime/runtime",
-        "core-js/stable",
-      ],
-      modernPolyfills: true,
-      renderLegacyChunks: true,
-    }),
-  ].filter(Boolean),
+      targets: ['defaults', 'not IE 11', 'iOS >= 9'],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime']
+    })
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Force la compilation CSS pour être plus compatible
   build: {
     target: "es2015",
-    cssTarget: "safari9",
-    // Ensure all code is transpiled for older browsers
-    minify: 'terser',
-    terserOptions: {
-      ecma: 5,
-      safari10: true,
-    },
-  },
-}));
+    cssTarget: "chrome61", // Support CSS safe
+  }
+});
