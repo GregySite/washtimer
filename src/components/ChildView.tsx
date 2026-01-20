@@ -29,6 +29,16 @@ export default function ChildView() {
         setTimeLeft(currentStep.duration);
     }
   }, [status, currentStep]);
+  
+  useEffect(() => {
+    // Si la douche vient d'être lancée et qu'on est sur la première étape
+    if (status === 'running' && currentStepIndex === 0 && steps.length > 0) {
+      const firstStep = steps.filter(s => s.active)[0];
+      if (firstStep) {
+        setTimeLeft(firstStep.duration);
+      }
+    }
+  }, [status]); // Ne se déclenche que quand le statut change
 
   if (status === 'setup') return (
     <div className="min-h-screen bg-blue-600 flex items-center justify-center p-6 text-white text-center">

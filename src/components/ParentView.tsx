@@ -16,13 +16,45 @@ export default function ParentView() {
   const handleStart = async () => {
     const success = await joinSession(sessionInput);
     if (success) {
+      // On met à jour avec 'waiting' pour charger les étapes, mais on ne lance pas 'running'
       await updateSession({ 
-        status: 'running', 
-        steps: DEFAULT_STEPS, 
+        status: 'waiting', 
+        steps: localSteps, 
         current_step_index: 0 
       });
     }
   };
+
+  // MODIFICATION : Si le statut est 'waiting', on affiche le réglage des temps
+  if (status === 'waiting') {
+    return (
+      <div className="p-6 max-w-md mx-auto space-y-4">
+        <h2 className="text-xl font-bold text-slate-800 mb-4 text-center">Réglage de la douche</h2>
+        {localSteps.map((step, idx) => (
+          <div key={step.id} className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+            <span className="font-medium text-slate-700">{step.label}</span>
+            <input 
+              type="number" 
+              className="w-20 p-2 border rounded text-center font-mono"
+              value={step.duration / 60}
+              onChange={(e) => {
+                const newSteps = [...localSteps];
+                newSteps[idx].duration = Number(e.target.value) * 60;
+                setLocalSteps(newSteps);
+              }}
+            />
+            <span className="text-xs text-slate-400">min</span>
+          </div>
+        ))}
+        <Button 
+          className="w-full h-16 bg-green-500 text-white font-bold text-xl mt-6"
+          onClick={() => updateSession({ status: 'running', steps: localSteps })}
+        >
+          C'EST PARTI !
+        </Button>
+      </div>
+    );
+  }
 
   if (status === 'setup' || !sessionCode) {
     return (

@@ -40,3 +40,12 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Cache le badge de l'éditeur en production */
+#lovable-badge, 
+.lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
