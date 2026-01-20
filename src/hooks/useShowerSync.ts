@@ -9,12 +9,11 @@ export function useShowerSync(mode: 'parent' | 'child') {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  // 1. Initialisation ENFANT : Créer la session AVANT d'afficher le code
+  // 1. Initialisation ENFANT : Créer la session
   useEffect(() => {
     if (mode === 'child' && !sessionCode) {
       const generateSession = async () => {
         const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-        console.log("Tentative de création de session avec le code:", newCode);
         
         const { error } = await supabase
           .from('shower_sessions')
@@ -26,80 +25,89 @@ export function useShowerSync(mode: 'parent' | 'child') {
           }]);
 
         if (error) {
-          console.error("Erreur Supabase à l'insertion:", error.message);
-          // Si erreur, on réessaie dans 2 secondes
+          console.error("Erreur création session:", error.message);
           setTimeout(generateSession, 2000);
         } else {
           setSessionCode(newCode);
-          console.log("Session validée dans la base !");
         }
       };
       generateSession();
     }
   }, [mode, sessionCode]);
 
-  // 2. Écoute en temps réel
+  // 2. Écoute en temps réel (Realtime)
   useEffect(() => {
     if (!sessionCode) return;
+
     const channel = supabase
       .channel(`shower_${sessionCode}`)
       .on('postgres_changes', { 
-        event: 'UPDATE', 
+        event: '*', 
         schema: 'public', 
         table: 'shower_sessions', 
         filter: `session_code=eq.${sessionCode}` 
       }, (payload) => {
-        const data = payload.new;
-        if (data.status) setStatus(data.status);
-        if (data.steps) setSteps(data.steps.filter((s: any) => s.active));
-        if (data.current_step_index !== undefined) setCurrentStepIndex(data.current_step_index);
+        const data = payload.new as any;
+        if (!data) return;
+
+        setStatus(data.status);
+        if (data.steps) setSteps(data.steps);
+        setCurrentStepIndex(data.current_step_index || 0);
+        
+        // CORRECTION CHRONO : Si on passe en 'running', on initialise le temps local
+        if (data.status === 'running' && data.steps && data.steps.length > 0) {
+          const activeSteps = data.steps.filter((s: any) => s.active);
+          const currentStep = activeSteps[data.current_step_index || 0];
+          if (currentStep && timeLeft === 0) {
+            setTimeLeft(currentStep.duration);
+          }
+        }
       })
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
-  }, [sessionCode]);
+  }, [sessionCode, timeLeft]);
 
+  // 3. Fonctions de mise à jour
   const updateSession = async (newData: any) => {
-  if (!sessionCode) return;
-  console.log("Tentative d'écriture...", newData);
-  
-  const { error } = await supabase
-    .from('shower_sessions')
-    .update(newData)
-    .eq('session_code', sessionCode);
+    if (!sessionCode) return;
+    
+    const { error } = await supabase
+      .from('shower_sessions')
+      .update(newData)
+      .eq('session_code', sessionCode);
 
-  if (error) {
-    console.error("ERREUR D'ÉCRITURE SUPABASE:", error.message);
-    alert("Erreur d'écriture : " + error.message); // Ça s'affichera sur ton tel
-  } else {
-    console.log("Écriture réussie !");
-  }
-};
+    if (error) {
+      console.error("Erreur mise à jour:", error.message);
+    }
+  };
 
   const joinSession = async (code: string) => {
-  const cleanCode = code.trim().toUpperCase();
-  console.log("Recherche de la session...", cleanCode);
-  
-  const { data, error } = await supabase
-    .from('shower_sessions')
-    .select('*')
-    .eq('session_code', cleanCode)
-    .maybeSingle();
+    const cleanCode = code.trim().toUpperCase();
+    const { data, error } = await supabase
+      .from('shower_sessions')
+      .select('*')
+      .eq('session_code', cleanCode)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Erreur de recherche:", error.message);
-    return false;
-  }
+    if (error || !data) {
+      return false;
+    }
 
-  if (data) {
-    // FORCE LE CHANGEMENT LOCAL IMMEDIAT
     setSessionCode(cleanCode);
-    setStatus(data.status); 
-    console.log("Session trouvée localement !");
+    setStatus(data.status);
+    if (data.steps) setSteps(data.steps);
     return true;
-  }
-  
-  return false;
-};
+  };
 
-  return { sessionCode, status, steps, currentStepIndex, timeLeft, updateSession, joinSession };
+  return { 
+    sessionCode, 
+    status, 
+    steps, 
+    currentStepIndex, 
+    timeLeft, 
+    setTimeLeft, // On expose setTimeLeft pour le décompte local
+    updateSession, 
+    joinSession 
+  };
 }
