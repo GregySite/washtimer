@@ -59,9 +59,21 @@ export function useShowerSync(mode: 'parent' | 'child') {
   }, [sessionCode]);
 
   const updateSession = async (newData: any) => {
-    if (!sessionCode) return;
-    await supabase.from('shower_sessions').update(newData).eq('session_code', sessionCode);
-  };
+  if (!sessionCode) return;
+  console.log("Tentative d'écriture...", newData);
+  
+  const { error } = await supabase
+    .from('shower_sessions')
+    .update(newData)
+    .eq('session_code', sessionCode);
+
+  if (error) {
+    console.error("ERREUR D'ÉCRITURE SUPABASE:", error.message);
+    alert("Erreur d'écriture : " + error.message); // Ça s'affichera sur ton tel
+  } else {
+    console.log("Écriture réussie !");
+  }
+};
 
   const joinSession = async (code: string) => {
   const cleanCode = code.trim().toUpperCase();
