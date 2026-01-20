@@ -14,16 +14,29 @@ export default function ParentView() {
   const formatTime = (s: number) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
 
   const handleStart = async () => {
-    const success = await joinSession(sessionInput);
+  if (!sessionInput) return alert("Entre le code d'abord !");
+  
+  const codeToJoin = sessionInput.trim().toUpperCase();
+  console.log("Tentative de connexion au code :", codeToJoin);
+  
+  try {
+    const success = await joinSession(codeToJoin);
+    
     if (success) {
-      // On met à jour avec 'waiting' pour charger les étapes, mais on ne lance pas 'running'
+      console.log("Connexion réussie, envoi du statut waiting...");
       await updateSession({ 
         status: 'waiting', 
-        steps: localSteps, 
+        steps: DEFAULT_STEPS,
         current_step_index: 0 
       });
+    } else {
+      alert("Le code " + codeToJoin + " n'existe pas. Vérifie l'écran enfant.");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Erreur technique : " + err.message);
+  }
+};
 
   // MODIFICATION : Si le statut est 'waiting', on affiche le réglage des temps
   if (status === 'waiting') {

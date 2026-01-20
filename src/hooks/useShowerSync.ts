@@ -43,16 +43,27 @@ export function useShowerSync(mode: 'parent' | 'child') {
   };
 
   const joinSession = async (code: string) => {
-    const cleanCode = code.trim().toUpperCase();
-    const { data } = await supabase.from('shower_sessions').select('*').eq('session_code', cleanCode).maybeSingle();
-    if (data) {
-      setSessionCode(cleanCode);
-      setStatus(data.status);
-      setSteps(data.steps || []);
-      return true;
-    }
+  const cleanCode = code.trim().toUpperCase();
+  const { data, error } = await supabase
+    .from('shower_sessions')
+    .select('*')
+    .eq('session_code', cleanCode)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase:", error.message);
     return false;
-  };
+  }
+
+  if (data) {
+    setSessionCode(cleanCode);
+    setStatus(data.status);
+    // On met à jour les étapes locales avec celles de la base
+    if (data.steps) setSteps(data.steps);
+    return true;
+  }
+  return false;
+};
 
   return { sessionCode, status, steps, currentStepIndex, timeLeft, setTimeLeft, updateSession, joinSession };
 }
