@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useShowerSync } from "@/hooks/useShowerSync";
+import { useShowerSync } from "../hooks/useShowerSync"; // Chemin relatif direct
 import { Loader2 } from "lucide-react";
 
 export default function ChildView() {

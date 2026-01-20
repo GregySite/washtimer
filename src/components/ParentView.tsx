@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useShowerSync } from "@/hooks/useShowerSync";
-import { DEFAULT_STEPS } from "@/lib/constants";
-import { Button } from "./ui/button"; // Vérifie ce chemin
+import { useShowerSync } from "../hooks/useShowerSync"; // Chemin relatif direct
+import { DEFAULT_STEPS } from "../lib/constants";
+import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Play, Pause, Square } from "lucide-react";
