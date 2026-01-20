@@ -64,21 +64,30 @@ export function useShowerSync(mode: 'parent' | 'child') {
   };
 
   const joinSession = async (code: string) => {
-    const cleanCode = code.trim().toUpperCase();
-    const { data, error } = await supabase
-      .from('shower_sessions')
-      .select('*')
-      .eq('session_code', cleanCode)
-      .maybeSingle();
+  const cleanCode = code.trim().toUpperCase();
+  console.log("Recherche de la session...", cleanCode);
+  
+  const { data, error } = await supabase
+    .from('shower_sessions')
+    .select('*')
+    .eq('session_code', cleanCode)
+    .maybeSingle();
 
-    if (error || !data) {
-      console.error("Session non trouvée:", error?.message);
-      return false;
-    }
+  if (error) {
+    console.error("Erreur de recherche:", error.message);
+    return false;
+  }
+
+  if (data) {
+    // FORCE LE CHANGEMENT LOCAL IMMEDIAT
     setSessionCode(cleanCode);
-    setStatus(data.status);
+    setStatus(data.status); 
+    console.log("Session trouvée localement !");
     return true;
-  };
+  }
+  
+  return false;
+};
 
   return { sessionCode, status, steps, currentStepIndex, timeLeft, updateSession, joinSession };
 }
