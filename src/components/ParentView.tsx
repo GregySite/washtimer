@@ -1,123 +1,167 @@
 import { useState } from "react";
-import { useShowerSync } from "../hooks/useShowerSync";
-import { DEFAULT_STEPS } from "../lib/constants";
-import { Play, Pause, Square } from "lucide-react";
+import { useShowerSync } from "@/hooks/useShowerSync";
+import { DEFAULT_STEPS } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Play, Pause, Square, Settings } from "lucide-react";
 
 export default function ParentView() {
   const { sessionCode, status, steps, currentStepIndex, updateSession, joinSession } = useShowerSync('parent');
   const [sessionInput, setSessionInput] = useState("");
+  const [localSteps, setLocalSteps] = useState(DEFAULT_STEPS);
 
+  // Calculs pour l'affichage
   const activeSteps = steps.filter(s => s.active);
   const currentStep = activeSteps[currentStepIndex];
   const totalTimeLeft = activeSteps.slice(currentStepIndex).reduce((acc, s) => acc + s.duration, 0);
-
   const formatTime = (s: number) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
 
-  const handleStart = async () => {
-  if (!sessionInput) return alert("Entre le code d'abord !");
-  
-  const codeToJoin = sessionInput.trim().toUpperCase();
-  console.log("Tentative de connexion au code :", codeToJoin);
-  
-  try {
-    const success = await joinSession(codeToJoin);
-    
+  // 1. REJOINDRE (Écran 1 -> Écran 2)
+  const handleJoin = async () => {
+    const code = sessionInput.trim().toUpperCase();
+    if (code.length < 4) return;
+
+    const success = await joinSession(code);
     if (success) {
-      console.log("Connexion réussie, envoi du statut waiting...");
-      await updateSession({ 
-        status: 'waiting', 
-        steps: DEFAULT_STEPS,
-        current_step_index: 0 
-      });
+      // On force l'update immédiat en passant le code explicitement
+      await updateSession({ status: 'waiting', steps: DEFAULT_STEPS }, code);
     } else {
-      alert("Le code " + codeToJoin + " n'existe pas. Vérifie l'écran enfant.");
+      alert("Code incorrect");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Erreur technique : " + err.message);
-  }
-};
+  };
 
-  // MODIFICATION : Si le statut est 'waiting', on affiche le réglage des temps
-  if (status === 'waiting') {
-    return (
-      <div className="p-6 max-w-md mx-auto space-y-4">
-        <h2 className="text-xl font-bold text-slate-800 mb-4 text-center">Réglage de la douche</h2>
-        {localSteps.map((step, idx) => (
-          <div key={step.id} className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
-            <span className="font-medium text-slate-700">{step.label}</span>
-            <input 
-              type="number" 
-              className="w-20 p-2 border rounded text-center font-mono"
-              value={step.duration / 60}
-              onChange={(e) => {
-                const newSteps = [...localSteps];
-                newSteps[idx].duration = Number(e.target.value) * 60;
-                setLocalSteps(newSteps);
-              }}
-            />
-            <span className="text-xs text-slate-400">min</span>
-          </div>
-        ))}
-        <Button 
-          className="w-full h-16 bg-green-500 text-white font-bold text-xl mt-6"
-          onClick={() => updateSession({ status: 'running', steps: localSteps })}
-        >
-          C'EST PARTI !
-        </Button>
-      </div>
-    );
-  }
+  // 2. LANCER (Écran 2 -> Écran 3)
+  const handleLaunch = async () => {
+    await updateSession({ 
+      status: 'running', 
+      steps: localSteps, // On envoie les temps modifiés
+      current_step_index: 0 
+    });
+  };
 
+  // --- ÉCRAN 1 : CONNEXION ---
+  // Layout remonté (pt-20) pour le clavier
   if (status === 'setup' || !sessionCode) {
     return (
-      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <input 
-          style={{ textAlign: 'center', fontSize: '24px', height: '60px', borderRadius: '8px', border: '1px solid #ccc', width: '100%' }}
-          placeholder="CODE" 
-          value={sessionInput} 
-          onChange={e => setSessionInput(e.target.value)} 
-        />
-        <button 
-          style={{ width: '100%', height: '60px', fontSize: '18px', fontWeight: 'bold', backgroundColor: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-          onClick={handleStart}
-        >
-          REJOINDRE ET LANCER
-        </button>
+      <div className="flex flex-col items-center justify-start min-h-screen bg-slate-50 pt-20 px-6 gap-6">
+        <h1 className="text-2xl font-bold text-slate-800">Mode Parent</h1>
+        <Card className="w-full p-6 shadow-lg border-t-4 border-blue-500">
+          <label className="text-sm font-bold text-slate-500 mb-2 block">CODE DE LA DOUCHE</label>
+          <Input 
+            className="text-center text-4xl h-20 font-mono uppercase tracking-widest mb-6" 
+            placeholder="ABCD" 
+            maxLength={4}
+            value={sessionInput} 
+            onChange={e => setSessionInput(e.target.value.toUpperCase())} 
+          />
+          <Button 
+            size="lg" 
+            className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700" 
+            onClick={handleJoin}
+          >
+            VALIDER
+          </Button>
+        </Card>
       </div>
     );
   }
 
+  // --- ÉCRAN 2 : RÉGLAGES (WAITING) ---
+  // C'est cet écran qui manquait !
+  if (status === 'waiting') {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 pt-10 px-4 pb-32">
+        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <Settings className="w-6 h-6"/> Réglage des temps
+        </h2>
+        
+        <div className="space-y-3">
+          {localSteps.map((step, idx) => (
+            <Card key={step.id} className="p-4 flex items-center justify-between shadow-sm">
+              <span className="font-bold text-slate-700">{step.label}</span>
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="number" 
+                  className="w-20 text-center font-mono text-lg h-12"
+                  value={Math.round(step.duration / 60)} // On affiche en minutes
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    const newSteps = [...localSteps];
+                    newSteps[idx] = { ...step, duration: val * 60 };
+                    setLocalSteps(newSteps);
+                  }}
+                />
+                <span className="text-sm text-slate-400 font-medium w-8">min</span>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t">
+          <Button 
+            className="w-full h-20 text-2xl font-black bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-xl"
+            onClick={handleLaunch}
+          >
+            C'EST PARTI ! 🚀
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- ÉCRAN 3 : CONTRÔLE (RUNNING / PAUSED / FINISHED) ---
   return (
-    <div style={{ padding: '24px', maxWidth: '400px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderTop: '8px solid #3b82f6', marginBottom: '24px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Étape en cours</div>
-        <div style={{ fontSize: '32px', fontWeight: '900', color: '#2563eb', margin: '16px 0' }}>{currentStep?.label || "---"}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-          <div>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Temps Étape</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#334155' }}>{formatTime(currentStep?.duration || 0)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Temps Total</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6' }}>{formatTime(totalTimeLeft)}</div>
-          </div>
+    <div className="flex flex-col min-h-screen bg-slate-50 pt-10 px-6">
+      <div className="text-center mb-8">
+        <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">En cours</div>
+        <div className="text-4xl font-black text-blue-600 truncate">
+            {currentStep ? currentStep.label : "Terminé"}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <Card className="p-6 mb-8 bg-white shadow-xl border-blue-100 border-2">
+        <div className="grid grid-cols-2 gap-8 text-center divide-x">
+          <div>
+            <div className="text-xs font-bold text-slate-400 uppercase mb-1">Étape</div>
+            <div className="text-3xl font-mono font-bold text-slate-800">
+              {formatTime(currentStep?.duration || 0)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-400 uppercase mb-1">Total</div>
+            <div className="text-3xl font-mono font-bold text-blue-500">
+              {formatTime(totalTimeLeft)}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-4 mt-auto mb-10">
         {status === 'running' ? (
-          <button style={{ height: '60px', borderRadius: '12px', border: '2px solid #e2e8f0', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => updateSession({ status: 'paused' })}>
-            <Pause style={{ marginRight: '8px' }} /> PAUSE
-          </button>
+          <Button 
+            variant="outline" 
+            className="h-24 text-xl font-bold border-2 border-slate-200" 
+            onClick={() => updateSession({ status: 'paused' })}
+          >
+            <Pause className="mr-2 w-6 h-6" /> PAUSE
+          </Button>
         ) : (
-          <button style={{ height: '60px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => updateSession({ status: 'running' })}>
-            <Play style={{ marginRight: '8px' }} /> REPRENDRE
-          </button>
+          <Button 
+            className="h-24 text-xl font-bold bg-green-500 hover:bg-green-600 text-white" 
+            onClick={() => updateSession({ status: 'running' })}
+          >
+            <Play className="mr-2 w-6 h-6" /> REPRENDRE
+          </Button>
         )}
-        <button style={{ height: '60px', borderRadius: '12px', border: 'none', backgroundColor: '#ef4444', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => updateSession({ status: 'setup', current_step_index: 0 })}>
-          <Square style={{ marginRight: '8px' }} /> STOP
-        </button>
+        
+        <Button 
+          variant="destructive" 
+          className="h-24 text-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 border-none" 
+          onClick={() => updateSession({ status: 'setup', current_step_index: 0 })}
+        >
+          <Square className="mr-2 w-6 h-6 fill-current" /> STOP
+        </Button>
       </div>
     </div>
   );
