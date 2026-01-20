@@ -1,113 +1,74 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Step } from "@/lib/constants";
+import { useEffect } from "react";
+import { useShowerSync } from "@/hooks/useShowerSync";
+import { Loader2 } from "lucide-react";
 
-export function useShowerSync(mode: 'parent' | 'child') {
-  const [sessionCode, setSessionCode] = useState<string>("");
-  const [status, setStatus] = useState<'setup' | 'waiting' | 'ready' | 'running' | 'finished'>('setup');
-  const [steps, setSteps] = useState<Step[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(0);
+export default function ChildView() {
+  const { sessionCode, status, steps, currentStepIndex, timeLeft, setTimeLeft, updateSession } = useShowerSync('child');
 
-  // 1. Initialisation ENFANT : Créer la session
+  const activeSteps = steps.filter(s => s.active);
+  const currentStep = activeSteps[currentStepIndex];
+
   useEffect(() => {
-    if (mode === 'child' && !sessionCode) {
-      const generateSession = async () => {
-        const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-        
-        const { error } = await supabase
-          .from('shower_sessions')
-          .insert([{ 
-            session_code: newCode, 
-            status: 'setup', 
-            steps: [],
-            current_step_index: 0 
-          }]);
-
-        if (error) {
-          console.error("Erreur création session:", error.message);
-          setTimeout(generateSession, 2000);
-        } else {
-          setSessionCode(newCode);
-        }
-      };
-      generateSession();
+    let interval: NodeJS.Timeout;
+    if (status === 'running' && timeLeft > 0) {
+      interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    } else if (status === 'running' && timeLeft === 0 && currentStep) {
+      if (currentStepIndex < activeSteps.length - 1) {
+        const nextIndex = currentStepIndex + 1;
+        updateSession({ current_step_index: nextIndex });
+        setTimeLeft(activeSteps[nextIndex].duration);
+      } else {
+        updateSession({ status: 'finished' });
+      }
     }
-  }, [mode, sessionCode]);
+    return () => clearInterval(interval);
+  }, [status, timeLeft, currentStepIndex]);
 
-  // 2. Écoute en temps réel (Realtime)
+  // Initialisation du premier chrono
   useEffect(() => {
-    if (!sessionCode) return;
-
-    const channel = supabase
-      .channel(`shower_${sessionCode}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'shower_sessions', 
-        filter: `session_code=eq.${sessionCode}` 
-      }, (payload) => {
-        const data = payload.new as any;
-        if (!data) return;
-
-        setStatus(data.status);
-        if (data.steps) setSteps(data.steps);
-        setCurrentStepIndex(data.current_step_index || 0);
-        
-        // CORRECTION CHRONO : Si on passe en 'running', on initialise le temps local
-        if (data.status === 'running' && data.steps && data.steps.length > 0) {
-          const activeSteps = data.steps.filter((s: any) => s.active);
-          const currentStep = activeSteps[data.current_step_index || 0];
-          if (currentStep && timeLeft === 0) {
-            setTimeLeft(currentStep.duration);
-          }
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [sessionCode, timeLeft]);
-
-  // 3. Fonctions de mise à jour
-  const updateSession = async (newData: any) => {
-    if (!sessionCode) return;
-    
-    const { error } = await supabase
-      .from('shower_sessions')
-      .update(newData)
-      .eq('session_code', sessionCode);
-
-    if (error) {
-      console.error("Erreur mise à jour:", error.message);
+    if (status === 'running' && timeLeft === 0 && currentStep) {
+        setTimeLeft(currentStep.duration);
     }
-  };
+  }, [status]);
 
-  const joinSession = async (code: string) => {
-    const cleanCode = code.trim().toUpperCase();
-    const { data, error } = await supabase
-      .from('shower_sessions')
-      .select('*')
-      .eq('session_code', cleanCode)
-      .maybeSingle();
+  if (status === 'setup') return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center p-6 text-white">
+      <div className="bg-white/20 backdrop-blur-lg p-12 rounded-[3rem] border-2 border-white/30 text-center shadow-2xl">
+        <h2 className="text-2xl font-medium mb-4 opacity-90">Code Magique</h2>
+        <div className="text-8xl font-black font-mono tracking-tighter mb-4">{sessionCode || "..."}</div>
+        <p className="animate-pulse">En attente de Papa/Maman...</p>
+      </div>
+    </div>
+  );
 
-    if (error || !data) {
-      return false;
-    }
+  if (status === 'running' || status === 'paused') {
+    const progress = currentStep ? (timeLeft / currentStep.duration) : 0;
+    const strokeDasharray = 2 * Math.PI * 120;
+    const strokeDashoffset = strokeDasharray * (1 - progress);
 
-    setSessionCode(cleanCode);
-    setStatus(data.status);
-    if (data.steps) setSteps(data.steps);
-    return true;
-  };
+    return (
+      <div className="min-h-screen bg-blue-500 flex flex-col items-center justify-center p-8 transition-colors duration-500">
+        <h2 className="text-4xl font-black text-white uppercase tracking-widest mb-12 drop-shadow-md">
+          {currentStep?.label}
+        </h2>
 
-  return { 
-    sessionCode, 
-    status, 
-    steps, 
-    currentStepIndex, 
-    timeLeft, 
-    setTimeLeft, // On expose setTimeLeft pour le décompte local
-    updateSession, 
-    joinSession 
-  };
+        <div className="relative flex items-center justify-center">
+          <svg className="w-80 h-80 transform -rotate-90">
+            <circle cx="160" cy="160" r="120" stroke="rgba(255,255,255,0.2)" strokeWidth="20" fill="transparent" />
+            <circle cx="160" cy="160" r="120" stroke="white" strokeWidth="20" fill="transparent" 
+              strokeDasharray={strokeDasharray} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" />
+          </svg>
+          <div className="absolute text-7xl font-black text-white font-mono">
+            {Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}
+          </div>
+        </div>
+
+        {status === 'paused' && (
+          <div className="mt-8 bg-white/20 px-6 py-2 rounded-full text-white font-bold animate-bounce">PAUSE</div>
+        )}
+      </div>
+    );
+  }
+
+  return <div className="min-h-screen bg-yellow-400 flex items-center justify-center text-6xl font-black text-white">FINI ! 🛁</div>;
 }
