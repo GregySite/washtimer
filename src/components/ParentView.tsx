@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useShowerSync } from "@/hooks/useShowerSync";
 import { DEFAULT_STEPS } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Play, Pause, Square, Timer, RefreshCw } from "lucide-react";
+import { Button } from "./ui/button"; // Vérifie ce chemin
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Play, Pause, Square } from "lucide-react";
 
 export default function ParentView() {
   const { sessionCode, status, steps, currentStepIndex, updateSession, joinSession } = useShowerSync('parent');
