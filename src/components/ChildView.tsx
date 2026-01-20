@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useShowerSync } from "../hooks/useShowerSync"; // Chemin relatif direct
+import { useShowerSync } from "../hooks/useShowerSync";
 import { Loader2 } from "lucide-react";
 
 export default function ChildView() {
@@ -9,7 +9,7 @@ export default function ChildView() {
   const currentStep = activeSteps[currentStepIndex];
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (status === 'running' && timeLeft > 0) {
       interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     } else if (status === 'running' && timeLeft === 0 && currentStep) {
@@ -22,21 +22,20 @@ export default function ChildView() {
       }
     }
     return () => clearInterval(interval);
-  }, [status, timeLeft, currentStepIndex]);
+  }, [status, timeLeft, currentStepIndex, activeSteps.length]);
 
-  // Initialisation du premier chrono
   useEffect(() => {
     if (status === 'running' && timeLeft === 0 && currentStep) {
         setTimeLeft(currentStep.duration);
     }
-  }, [status]);
+  }, [status, currentStep]);
 
   if (status === 'setup') return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center p-6 text-white">
-      <div className="bg-white/20 backdrop-blur-lg p-12 rounded-[3rem] border-2 border-white/30 text-center shadow-2xl">
-        <h2 className="text-2xl font-medium mb-4 opacity-90">Code Magique</h2>
-        <div className="text-8xl font-black font-mono tracking-tighter mb-4">{sessionCode || "..."}</div>
-        <p className="animate-pulse">En attente de Papa/Maman...</p>
+    <div className="min-h-screen bg-blue-600 flex items-center justify-center p-6 text-white text-center">
+      <div className="bg-white/10 p-12 rounded-[3rem] border border-white/20">
+        <h2 className="text-xl mb-4 opacity-80">Ton code :</h2>
+        <div className="text-8xl font-black font-mono mb-4">{sessionCode || <Loader2 className="animate-spin mx-auto"/>}</div>
+        <p className="animate-pulse">Attends Papa ou Maman...</p>
       </div>
     </div>
   );
@@ -47,28 +46,23 @@ export default function ChildView() {
     const strokeDashoffset = strokeDasharray * (1 - progress);
 
     return (
-      <div className="min-h-screen bg-blue-500 flex flex-col items-center justify-center p-8 transition-colors duration-500">
-        <h2 className="text-4xl font-black text-white uppercase tracking-widest mb-12 drop-shadow-md">
-          {currentStep?.label}
-        </h2>
-
+      <div className="min-h-screen bg-blue-500 flex flex-col items-center justify-center p-8">
+        <h2 className="text-4xl font-black text-white uppercase mb-12">{currentStep?.label}</h2>
         <div className="relative flex items-center justify-center">
           <svg className="w-80 h-80 transform -rotate-90">
             <circle cx="160" cy="160" r="120" stroke="rgba(255,255,255,0.2)" strokeWidth="20" fill="transparent" />
             <circle cx="160" cy="160" r="120" stroke="white" strokeWidth="20" fill="transparent" 
-              strokeDasharray={strokeDasharray} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" />
+              strokeDasharray={strokeDasharray} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} />
           </svg>
           <div className="absolute text-7xl font-black text-white font-mono">
             {Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}
           </div>
         </div>
-
-        {status === 'paused' && (
-          <div className="mt-8 bg-white/20 px-6 py-2 rounded-full text-white font-bold animate-bounce">PAUSE</div>
-        )}
       </div>
     );
   }
 
-  return <div className="min-h-screen bg-yellow-400 flex items-center justify-center text-6xl font-black text-white">FINI ! 🛁</div>;
+  if (status === 'finished') return <div className="min-h-screen bg-green-500 flex items-center justify-center text-6xl font-black text-white text-center p-6">🛁 C'EST FINI ! BRAVO !</div>;
+
+  return <div className="min-h-screen bg-blue-400 flex items-center justify-center text-white italic">En attente...</div>;
 }
