@@ -1,35 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import legacy from "@vitejs/plugin-legacy";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  server: {
+    host: "::",
+    port: 8080,
+  },
   plugins: [
     react(),
-    legacy({
-      // On cible spécifiquement les très vieux navigateurs
-      targets: ["ios >= 9", "safari >= 9"],
-      additionalLegacyPolyfills: ["regenerator-runtime/runtime"],
-      renderLegacyChunks: true,
-      polyfills: [
-        'es.symbol',
-        'es.array.filter',
-        'es.promise',
-        'es.object.assign',
-        'es.map',
-        'es.set',
-        'es.array.for-each',
-        'es.object.keys'
-      ]
-    }),
-  ],
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    target: "es5", // On force la sortie en vieux JavaScript
-    cssTarget: "chrome61", // Pour éviter les soucis de CSS modernes
-  }
-});
+}));
