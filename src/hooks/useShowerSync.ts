@@ -222,7 +222,7 @@ export function useShowerSync(mode: "parent" | "child") {
     setSessionId(data.id);
     setSessionCode(cleanCode);
     setStatus(data.state as SessionStatus);
-    setSteps(data.steps as Step[] || DEFAULT_STEPS);
+    setSteps((data.steps as unknown as Step[]) || DEFAULT_STEPS);
     setCurrentStepIndex(data.current_step_index || 0);
     setTimeRemaining(data.time_remaining || 0);
     setTotalDuration(data.total_duration || 0);
