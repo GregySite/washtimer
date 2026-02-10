@@ -9,7 +9,7 @@ const corsHeaders = {
 // In-memory rate limiter (per edge function instance)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 30 // max requests per window per IP
+const RATE_LIMIT_MAX_REQUESTS = 120 // max requests per window per IP (accommodates timer syncs)
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
