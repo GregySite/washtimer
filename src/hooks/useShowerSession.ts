@@ -68,7 +68,7 @@ export const useShowerSession = () => {
       
       return sessionData.session_code;
     } catch (err) {
-      console.error('Error creating session:', err);
+      console.error('[SESSION] Creation failed');
       setError('Erreur lors de la création de la session');
       return null;
     } finally {
@@ -114,7 +114,7 @@ export const useShowerSession = () => {
       
       return true;
     } catch (err) {
-      console.error('Error joining session:', err);
+      console.error('[SESSION] Join failed');
       setError('Erreur lors de la connexion à la session');
       return false;
     } finally {
@@ -141,7 +141,7 @@ export const useShowerSession = () => {
       var result = await response.json();
       setSession(result.session as ShowerSession);
     } catch (err) {
-      console.error('Error updating session:', err);
+      console.error('[SESSION] Update failed');
     }
   }, [session]);
 
@@ -186,7 +186,7 @@ export const useShowerSession = () => {
           filter: 'id=eq.' + session.id,
         },
         function(payload) {
-          console.log('Session updated:', payload.new);
+          // Session updated via realtime
           setSession(payload.new as ShowerSession);
         }
       )

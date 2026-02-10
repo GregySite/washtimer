@@ -36,7 +36,10 @@ export function useShowerSync(mode: "parent" | "child") {
   useEffect(() => {
     if (mode === "child" && !sessionCode) {
       const createSession = async () => {
-        const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const array = new Uint8Array(6);
+        crypto.getRandomValues(array);
+        const newCode = Array.from(array, b => chars[b % chars.length]).join('');
         const total = calculateTotalDuration(DEFAULT_STEPS);
         
         const { data, error } = await supabase
@@ -53,7 +56,7 @@ export function useShowerSync(mode: "parent" | "child") {
           .single();
 
         if (error) {
-          console.error("Error creating session:", error);
+          console.error("[SESSION] Creation failed");
           setTimeout(createSession, 2000);
         } else if (data) {
           setSessionId(data.id);
