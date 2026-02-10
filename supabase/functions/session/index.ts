@@ -40,15 +40,17 @@ function cleanupRateLimitMap() {
 // Session expiration: 24 hours
 const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
-// Validate session code format: exactly 4 uppercase alphanumeric chars (no ambiguous chars)
-const SESSION_CODE_REGEX = /^[A-Z2-9]{4}$/
+// Validate session code format: exactly 6 uppercase alphanumeric chars (no ambiguous chars)
+const SESSION_CODE_REGEX = /^[A-Z2-9]{6}$/
 
-// Generate a simple 4-char session code
+// Generate a cryptographically random 6-char session code
 function generateSessionCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const array = new Uint8Array(6)
+  crypto.getRandomValues(array)
   let code = ''
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  for (let i = 0; i < 6; i++) {
+    code += chars[array[i] % chars.length]
   }
   return code
 }
@@ -66,7 +68,7 @@ Deno.serve(async (req) => {
                      'unknown'
 
     if (isRateLimited(clientIp)) {
-      console.warn(`Rate limit exceeded for IP: ${clientIp}`)
+      console.warn('[RATE_LIMIT] Exceeded')
       return new Response(
         JSON.stringify({ error: 'Too many requests. Please try again later.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -140,14 +142,14 @@ Deno.serve(async (req) => {
         .single()
 
       if (error) {
-        console.error('Error creating session:', error)
+        console.error('[SESSION_CREATE] Failed', { code: error.code, timestamp: Date.now() })
         return new Response(
           JSON.stringify({ error: 'Failed to create session' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      console.log(`Session created: ${code} from IP: ${clientIp}`)
+      console.log(`[SESSION_CREATE] Success`)
       return new Response(
         JSON.stringify({ session: data }),
         { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -172,7 +174,7 @@ Deno.serve(async (req) => {
         .maybeSingle()
 
       if (error) {
-        console.error('Error fetching session:', error)
+        console.error('[SESSION_GET] Failed', { code: error.code, timestamp: Date.now() })
         return new Response(
           JSON.stringify({ error: 'Failed to fetch session' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
       // Check session expiration
       const sessionAge = Date.now() - new Date(data.created_at).getTime()
       if (sessionAge > SESSION_MAX_AGE_MS) {
-        console.log(`Expired session accessed: ${code}`)
+        console.log('[SESSION_GET] Expired session accessed')
         return new Response(
           JSON.stringify({ error: 'Session has expired' }),
           { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -286,7 +288,7 @@ Deno.serve(async (req) => {
       const { data, error } = await query.select().single()
 
       if (error) {
-        console.error('Error updating session:', error)
+        console.error('[SESSION_UPDATE] Failed', { code: error.code, timestamp: Date.now() })
         return new Response(
           JSON.stringify({ error: 'Failed to update session' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -305,7 +307,7 @@ Deno.serve(async (req) => {
     )
 
   } catch (err) {
-    console.error('Unexpected error:', err)
+    console.error('[SESSION] Unexpected error', { timestamp: Date.now() })
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
