@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
       }
 
       // Only allow updating specific fields with validation
-      const allowedFields = ['state', 'current_step_index', 'time_remaining', 'total_duration']
+      const allowedFields = ['state', 'current_step_index', 'time_remaining', 'total_duration', 'steps']
       const validStates = ['idle', 'setup', 'waiting', 'ready', 'running', 'paused', 'finished']
       const updates: Record<string, unknown> = { last_update: new Date().toISOString() }
       
@@ -269,6 +269,13 @@ Deno.serve(async (req) => {
             if (typeof body[field] !== 'number' || !Number.isInteger(body[field] as number) || (body[field] as number) < 0 || (body[field] as number) > 7200) {
               return new Response(
                 JSON.stringify({ error: `Invalid ${field} value` }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+          } else if (field === 'steps') {
+            if (!Array.isArray(body[field]) || (body[field] as unknown[]).length > 20) {
+              return new Response(
+                JSON.stringify({ error: `Invalid steps value` }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
               )
             }

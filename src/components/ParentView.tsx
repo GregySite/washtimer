@@ -79,14 +79,14 @@ export default function ParentView() {
   // --- SCREEN 1: LOGIN ---
   if (status === "setup" || !sessionCode) {
     return (
-      <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-primary/10 to-background pt-20 px-6 gap-6">
-        <h1 className="text-3xl font-black text-primary">DOUCHE PARENT 🛁</h1>
-        <Card className="w-full max-w-sm p-8 shadow-xl border-none bg-card rounded-3xl">
+      <div className="flex flex-col items-center min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-12 px-4 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-black text-primary">DOUCHE PARENT 🛁</h1>
+        <Card className="w-full max-w-sm p-6 shadow-xl border-none bg-card rounded-3xl">
           <label className="text-xs font-bold text-muted-foreground mb-2 block tracking-widest">
             CODE ENFANT
           </label>
           <Input
-            className="text-center text-5xl h-24 font-mono uppercase font-black mb-6 border-2 border-primary/20 rounded-2xl"
+            className="text-center text-3xl sm:text-5xl h-16 sm:h-24 font-mono uppercase font-black mb-4 border-2 border-primary/20 rounded-2xl"
             placeholder="ABC123"
             maxLength={6}
             value={sessionInput}
@@ -94,7 +94,7 @@ export default function ParentView() {
           />
           <Button
             size="lg"
-            className="w-full h-16 text-xl font-bold bg-primary hover:bg-primary/90 rounded-xl"
+            className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 rounded-xl"
             onClick={handleJoin}
           >
             CONNECTER
@@ -109,39 +109,39 @@ export default function ParentView() {
     const localTotal = localSteps.filter(s => s.active).reduce((sum, s) => sum + s.duration, 0);
     
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-primary/10 to-background pt-8 px-4 pb-32">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black text-foreground flex items-center gap-2">
-            <Settings className="w-6 h-6 text-primary" /> Configuration
+      <div className="flex flex-col min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-28">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" /> Configuration
           </h2>
-          <div className="text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-full">
+          <div className="text-sm font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">
             {Math.floor(localTotal / 60)} min {localTotal % 60 > 0 ? `${localTotal % 60}s` : ""}
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {localSteps.map((step, idx) => {
             const color = STEP_COLORS[step.icon] || "hsl(195, 85%, 55%)";
             const minutes = Math.floor(step.duration / 60);
             const seconds = step.duration % 60;
 
             return (
-              <Card key={step.id} className="p-4 shadow-lg border-none bg-card rounded-2xl">
-                <div className="flex items-center gap-3 mb-4">
+              <Card key={step.id} className="p-3 shadow-lg border-none bg-card rounded-2xl">
+                <div className="flex items-center gap-3 mb-3">
                   <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white"
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0"
                     style={{ backgroundColor: color }}
                   >
-                    {STEP_ICONS[step.icon] || <Droplets className="w-5 h-5" />}
+                    {STEP_ICONS[step.icon] || <Droplets className="w-4 h-4" />}
                   </div>
-                  <span className="font-bold text-foreground text-lg">{step.label}</span>
+                  <span className="font-bold text-foreground">{step.label}</span>
                 </div>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
                     <Input
                       type="number"
-                      className="text-center font-mono font-bold text-xl h-10 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
+                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
                       value={minutes}
                       min={0}
                       max={10}
@@ -158,7 +158,7 @@ export default function ParentView() {
                   <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
                     <Input
                       type="number"
-                      className="text-center font-mono font-bold text-xl h-10 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
+                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
                       value={seconds}
                       min={0}
                       max={59}
@@ -177,9 +177,9 @@ export default function ParentView() {
           })}
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-background/80 backdrop-blur border-t z-50">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur border-t z-50">
           <Button
-            className="w-full h-20 text-2xl font-black bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl rounded-2xl"
+            className="w-full h-16 text-xl font-black bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl rounded-2xl"
             onClick={handleLaunch}
           >
             LANCER LA DOUCHE 🚀
@@ -191,24 +191,24 @@ export default function ParentView() {
 
   // --- SCREEN 3: MONITORING ---
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-primary/10 to-background pt-10 px-6 pb-6">
+    <div className="flex flex-col min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-4">
       {/* Header */}
-      <div className="text-center mb-6">
-        <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-1 rounded-full">
+      <div className="text-center mb-4">
+        <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">
           Étape {currentStepIndex + 1} / {activeSteps.length}
         </span>
-        <h1 className="text-3xl font-black text-foreground mt-4">
+        <h1 className="text-2xl font-black text-foreground mt-3">
           {status === "finished" ? "Terminé ! 🎉" : currentStep?.label}
         </h1>
       </div>
 
       {/* Main timer */}
       {status !== "finished" && (
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-4">
           <CircularTimer
             timeRemaining={timeRemaining}
             totalTime={currentStep?.duration || 0}
-            size="xl"
+            size="lg"
             color={stepColor}
             icon={STEP_ICONS[currentStep?.icon || "Droplets"]}
           />
@@ -217,12 +217,12 @@ export default function ParentView() {
 
       {/* Progress */}
       {status !== "finished" && (
-        <Card className="p-4 rounded-2xl border-none shadow-lg mb-6">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+        <Card className="p-3 rounded-2xl border-none shadow-lg mb-4">
+          <div className="flex justify-between text-sm text-muted-foreground mb-1.5">
             <span>Progression totale</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
+          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{ width: `${progress}%`, backgroundColor: stepColor }}
@@ -230,7 +230,7 @@ export default function ParentView() {
           </div>
           
           {/* Mini step timers */}
-          <div className="flex justify-between mt-4 gap-2">
+          <div className="flex justify-between mt-3 gap-1.5">
             {activeSteps.map((step, idx) => {
               const isActive = idx === currentStepIndex;
               const isDone = idx < currentStepIndex;
@@ -249,7 +249,7 @@ export default function ParentView() {
                     color={isActive ? color : isDone ? "hsl(140, 70%, 50%)" : "hsl(210, 20%, 80%)"}
                     showLabel={false}
                   />
-                  <span className="text-xs text-muted-foreground mt-1 truncate max-w-[60px] text-center">
+                  <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[50px] text-center">
                     {step.label.split(" ")[0]}
                   </span>
                 </div>
@@ -260,43 +260,43 @@ export default function ParentView() {
       )}
 
       {/* Controls */}
-      <div className="mt-auto grid grid-cols-2 gap-4">
+      <div className="mt-auto grid grid-cols-2 gap-3">
         {status === "running" ? (
           <>
             <Button
               variant="outline"
-              className="h-20 text-lg font-bold border-2 rounded-2xl"
+              className="h-16 text-base font-bold border-2 rounded-2xl"
               onClick={() => updateSession({ state: "paused" })}
             >
-              <Pause className="mr-2 w-6 h-6" /> PAUSE
+              <Pause className="mr-2 w-5 h-5" /> PAUSE
             </Button>
             <Button
               variant="ghost"
-              className="h-20 text-lg font-bold text-destructive hover:bg-destructive/10 rounded-2xl"
+              className="h-16 text-base font-bold text-destructive hover:bg-destructive/10 rounded-2xl"
               onClick={() => updateSession({ state: "setup", current_step_index: 0, time_remaining: 0 })}
             >
-              <Square className="mr-2 w-6 h-6 fill-current" /> ARRÊTER
+              <Square className="mr-2 w-5 h-5 fill-current" /> ARRÊTER
             </Button>
           </>
         ) : status === "paused" ? (
           <>
             <Button
-              className="h-20 text-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl shadow-lg"
+              className="h-16 text-base font-bold bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl shadow-lg"
               onClick={() => updateSession({ state: "running" })}
             >
-              <Play className="mr-2 w-6 h-6" /> REPRENDRE
+              <Play className="mr-2 w-5 h-5" /> REPRENDRE
             </Button>
             <Button
               variant="ghost"
-              className="h-20 text-lg font-bold text-destructive hover:bg-destructive/10 rounded-2xl"
+              className="h-16 text-base font-bold text-destructive hover:bg-destructive/10 rounded-2xl"
               onClick={() => updateSession({ state: "setup", current_step_index: 0, time_remaining: 0 })}
             >
-              <Square className="mr-2 w-6 h-6 fill-current" /> ARRÊTER
+              <Square className="mr-2 w-5 h-5 fill-current" /> ARRÊTER
             </Button>
           </>
         ) : status === "finished" ? (
           <Button
-            className="col-span-2 h-20 text-xl font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl"
+            className="col-span-2 h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl"
             onClick={() => updateSession({ state: "waiting" })}
           >
             🔄 Nouvelle douche
