@@ -15,6 +15,34 @@ export interface SessionData {
   last_update?: string;
 }
 
+// Edge function URL for validated updates
+const getEdgeFunctionUrl = () => {
+  let supabaseUrl = '';
+  try {
+    supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  } catch {
+    supabaseUrl = '';
+  }
+  if (!supabaseUrl) {
+    supabaseUrl = 'https://oezvahfwwkqsehsbcrxh.supabase.co';
+  }
+  return supabaseUrl + '/functions/v1/session';
+};
+
+async function patchSession(sessionCode: string, updates: Record<string, unknown>): Promise<boolean> {
+  try {
+    const url = getEdgeFunctionUrl() + '?code=' + encodeURIComponent(sessionCode);
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function useShowerSync(mode: "parent" | "child") {
   const [sessionId, setSessionId] = useState<string>("");
   const [sessionCode, setSessionCode] = useState<string>("");
@@ -26,6 +54,7 @@ export function useShowerSync(mode: "parent" | "child") {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<string>("");
+  const lastSyncRef = useRef<number>(0);
 
   // Calculate total duration from steps
   const calculateTotalDuration = useCallback((stepsToCalc: Step[]) => {
@@ -101,7 +130,7 @@ export function useShowerSync(mode: "parent" | "child") {
     };
   }, [sessionCode]);
 
-  // Timer logic for CHILD mode only
+  // Timer logic for CHILD mode only - all DB updates go through edge function
   useEffect(() => {
     if (mode !== "child") return;
     
@@ -111,19 +140,16 @@ export function useShowerSync(mode: "parent" | "child") {
     }
 
     if (status === "running" && timeRemaining > 0) {
-      timerRef.current = setInterval(async () => {
+      timerRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
           const newTime = prev - 1;
           
-          // Update database every second
-          supabase
-            .from("shower_sessions")
-            .update({ 
-              time_remaining: newTime,
-              last_update: new Date().toISOString()
-            })
-            .eq("session_code", sessionCode)
-            .then();
+          // Sync to DB via edge function every 5 seconds
+          const now = Date.now();
+          if (now - lastSyncRef.current >= 5000) {
+            lastSyncRef.current = now;
+            patchSession(sessionCode, { time_remaining: newTime });
+          }
 
           // Check if step is complete
           if (newTime <= 0) {
@@ -135,27 +161,16 @@ export function useShowerSync(mode: "parent" | "child") {
               setCurrentStepIndex(nextIndex);
               setTimeRemaining(nextStepTime);
               
-              supabase
-                .from("shower_sessions")
-                .update({
-                  current_step_index: nextIndex,
-                  time_remaining: nextStepTime,
-                  last_update: new Date().toISOString()
-                })
-                .eq("session_code", sessionCode)
-                .then();
+              // Step transition - always sync immediately via edge function
+              patchSession(sessionCode, {
+                current_step_index: nextIndex,
+                time_remaining: nextStepTime,
+              });
                 
               return nextStepTime;
             } else {
-              // Session complete
-              supabase
-                .from("shower_sessions")
-                .update({ 
-                  state: "finished",
-                  last_update: new Date().toISOString()
-                })
-                .eq("session_code", sessionCode)
-                .then();
+              // Session complete - sync immediately via edge function
+              patchSession(sessionCode, { state: "finished" });
               setStatus("finished");
               return 0;
             }
@@ -173,27 +188,19 @@ export function useShowerSync(mode: "parent" | "child") {
     };
   }, [mode, status, sessionCode, steps, currentStepIndex]);
 
-  // Update session
+  // Update session via edge function
   const updateSession = useCallback(
     async (updates: SessionData) => {
       if (!sessionCode) return;
 
-      const payload: any = {
-        ...updates,
-        last_update: new Date().toISOString(),
-      };
-      
-      // Rename state to match DB
+      // Update local state immediately
       if (updates.state) {
-        payload.state = updates.state;
         setStatus(updates.state);
       }
       if (updates.steps) {
-        payload.steps = updates.steps;
         setSteps(updates.steps);
         const newTotal = calculateTotalDuration(updates.steps);
         setTotalDuration(newTotal);
-        payload.total_duration = newTotal;
       }
       if (updates.current_step_index !== undefined) {
         setCurrentStepIndex(updates.current_step_index);
@@ -202,15 +209,23 @@ export function useShowerSync(mode: "parent" | "child") {
         setTimeRemaining(updates.time_remaining);
       }
 
-      await supabase
-        .from("shower_sessions")
-        .update(payload)
-        .eq("session_code", sessionCode);
+      // Build payload with only edge-function-allowed fields
+      const payload: Record<string, unknown> = {};
+      if (updates.state) payload.state = updates.state;
+      if (updates.current_step_index !== undefined) payload.current_step_index = updates.current_step_index;
+      if (updates.time_remaining !== undefined) payload.time_remaining = updates.time_remaining;
+      if (updates.total_duration !== undefined) payload.total_duration = updates.total_duration;
+      if (updates.steps) {
+        const newTotal = calculateTotalDuration(updates.steps);
+        payload.total_duration = newTotal;
+      }
+
+      await patchSession(sessionCode, payload);
     },
     [sessionCode, calculateTotalDuration]
   );
 
-  // Join session (parent)
+  // Join session (parent) - read-only via SELECT is fine
   const joinSession = useCallback(async (code: string): Promise<boolean> => {
     const cleanCode = code.trim().toUpperCase();
     
