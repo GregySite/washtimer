@@ -130,10 +130,10 @@ export function useShowerSync(mode: "parent" | "child") {
     };
   }, [sessionCode]);
 
-  // Timer logic for CHILD mode only - all DB updates go through edge function
+  // Timer logic for BOTH modes - local countdown every second
+  // Child mode: syncs to DB every 5 seconds and handles step transitions
+  // Parent mode: local countdown only (realtime updates correct any drift)
   useEffect(() => {
-    if (mode !== "child") return;
-    
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -144,38 +144,40 @@ export function useShowerSync(mode: "parent" | "child") {
         setTimeRemaining((prev) => {
           const newTime = prev - 1;
           
-          // Sync to DB via edge function every 5 seconds
-          const now = Date.now();
-          if (now - lastSyncRef.current >= 5000) {
-            lastSyncRef.current = now;
-            patchSession(sessionCode, { time_remaining: newTime });
-          }
+          // Only child syncs to DB
+          if (mode === "child") {
+            // Sync to DB via edge function every 5 seconds
+            const now = Date.now();
+            if (now - lastSyncRef.current >= 5000) {
+              lastSyncRef.current = now;
+              patchSession(sessionCode, { time_remaining: newTime });
+            }
 
-          // Check if step is complete
-          if (newTime <= 0) {
-            const activeSteps = steps.filter((s) => s.active);
-            const nextIndex = currentStepIndex + 1;
+            // Check if step is complete
+            if (newTime <= 0) {
+              const active = steps.filter((s) => s.active);
+              const nextIndex = currentStepIndex + 1;
 
-            if (nextIndex < activeSteps.length) {
-              const nextStepTime = activeSteps[nextIndex].duration;
-              setCurrentStepIndex(nextIndex);
-              setTimeRemaining(nextStepTime);
-              
-              // Step transition - always sync immediately via edge function
-              patchSession(sessionCode, {
-                current_step_index: nextIndex,
-                time_remaining: nextStepTime,
-              });
+              if (nextIndex < active.length) {
+                const nextStepTime = active[nextIndex].duration;
+                setCurrentStepIndex(nextIndex);
+                setTimeRemaining(nextStepTime);
                 
-              return nextStepTime;
-            } else {
-              // Session complete - sync immediately via edge function
-              patchSession(sessionCode, { state: "finished" });
-              setStatus("finished");
-              return 0;
+                patchSession(sessionCode, {
+                  current_step_index: nextIndex,
+                  time_remaining: nextStepTime,
+                });
+                  
+                return nextStepTime;
+              } else {
+                patchSession(sessionCode, { state: "finished" });
+                setStatus("finished");
+                return 0;
+              }
             }
           }
           
+          if (newTime <= 0) return 0;
           return newTime;
         });
       }, 1000);
@@ -186,7 +188,7 @@ export function useShowerSync(mode: "parent" | "child") {
         clearInterval(timerRef.current);
       }
     };
-  }, [mode, status, sessionCode, steps, currentStepIndex]);
+  }, [mode, status, sessionCode, steps, currentStepIndex, timeRemaining]);
 
   // Update session via edge function
   const updateSession = useCallback(
@@ -216,6 +218,7 @@ export function useShowerSync(mode: "parent" | "child") {
       if (updates.time_remaining !== undefined) payload.time_remaining = updates.time_remaining;
       if (updates.total_duration !== undefined) payload.total_duration = updates.total_duration;
       if (updates.steps) {
+        payload.steps = updates.steps;
         const newTotal = calculateTotalDuration(updates.steps);
         payload.total_duration = newTotal;
       }
