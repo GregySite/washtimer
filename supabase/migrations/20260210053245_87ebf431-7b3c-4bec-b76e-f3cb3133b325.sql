@@ -1,0 +1,2 @@
+ALTER TABLE public.shower_sessions DROP CONSTRAINT shower_sessions_state_check;
+ALTER TABLE public.shower_sessions ADD CONSTRAINT shower_sessions_state_check CHECK (state = ANY (ARRAY['idle', 'setup', 'waiting', 'ready', 'running', 'paused', 'finished', 'completed']));
