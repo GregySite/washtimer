@@ -15,8 +15,8 @@ const JoinSession = ({ onJoin, loading, error }: JoinSessionProps) => {
     e.preventDefault();
     setLocalError(null);
     
-    if (code.length < 4) {
-      setLocalError("Le code doit contenir 4 caractères");
+    if (code.length < 6) {
+      setLocalError("Le code doit contenir 6 caractères");
       return;
     }
 
@@ -70,7 +70,7 @@ const JoinSession = ({ onJoin, loading, error }: JoinSessionProps) => {
 
           <button
             type="submit"
-            disabled={loading || code.length < 4}
+            disabled={loading || code.length < 6}
             className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (

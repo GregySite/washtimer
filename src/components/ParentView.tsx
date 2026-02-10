@@ -61,7 +61,7 @@ export default function ParentView() {
 
   const handleJoin = async () => {
     const code = sessionInput.trim().toUpperCase();
-    if (code.length < 4) return;
+    if (code.length < 6) return;
     const success = await joinSession(code);
     if (success) {
       // Mark as waiting so parent can configure
@@ -87,8 +87,8 @@ export default function ParentView() {
           </label>
           <Input
             className="text-center text-5xl h-24 font-mono uppercase font-black mb-6 border-2 border-primary/20 rounded-2xl"
-            placeholder="ABCD"
-            maxLength={4}
+            placeholder="ABC123"
+            maxLength={6}
             value={sessionInput}
             onChange={(e) => setSessionInput(e.target.value.toUpperCase())}
           />
