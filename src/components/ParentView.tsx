@@ -4,7 +4,7 @@ import { DEFAULT_STEPS, Step } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Play, Pause, Square, Settings, Droplets, Sparkles, User, Smile } from "lucide-react";
+import { Play, Pause, Square, Settings, Droplets, Sparkles, User, Smile, Plus, Minus } from "lucide-react";
 import CircularTimer from "./CircularTimer";
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
@@ -42,7 +42,6 @@ export default function ParentView() {
   const currentStep = activeSteps[currentStepIndex];
   const stepColor = STEP_COLORS[currentStep?.icon || "Droplets"];
 
-  // Calculate elapsed and progress
   const calculateElapsed = () => {
     let elapsed = 0;
     for (let i = 0; i < currentStepIndex; i++) {
@@ -64,7 +63,6 @@ export default function ParentView() {
     if (code.length < 6) return;
     const success = await joinSession(code);
     if (success) {
-      // Mark as waiting so parent can configure
       await updateSession({ state: "waiting", steps: DEFAULT_STEPS });
     } else {
       alert("Code introuvable !");
@@ -72,14 +70,39 @@ export default function ParentView() {
   };
 
   const handleLaunch = async () => {
-    await updateSession({ steps: localSteps });
-    setTimeout(() => startShower(), 100);
+    // Pass localSteps directly to startShower to avoid race condition
+    await startShower(localSteps);
+  };
+
+  // Live adjust: add/subtract seconds to current step timer
+  const handleLiveAdjust = async (stepIdx: number, delta: number) => {
+    const active = steps.filter(s => s.active);
+    if (stepIdx === currentStepIndex) {
+      // Adjust current step's running timer
+      const newTime = Math.max(0, timeRemaining + delta);
+      const newSteps = steps.map(s => {
+        if (s.id === active[stepIdx].id) {
+          return { ...s, duration: Math.max(10, s.duration + delta) };
+        }
+        return s;
+      });
+      await updateSession({ time_remaining: newTime, steps: newSteps });
+    } else {
+      // Adjust a future step's duration
+      const newSteps = steps.map(s => {
+        if (s.id === active[stepIdx].id) {
+          return { ...s, duration: Math.max(10, s.duration + delta) };
+        }
+        return s;
+      });
+      await updateSession({ steps: newSteps });
+    }
   };
 
   // --- SCREEN 1: LOGIN ---
   if (status === "setup" || !sessionCode) {
     return (
-      <div className="flex flex-col items-center min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-12 px-4 gap-4">
+      <div className="flex flex-col items-center min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-primary/10 to-background pt-12 px-4 gap-4">
         <h1 className="text-2xl sm:text-3xl font-black text-primary">DOUCHE PARENT 🛁</h1>
         <Card className="w-full max-w-sm p-6 shadow-xl border-none bg-card rounded-3xl">
           <label className="text-xs font-bold text-muted-foreground mb-2 block tracking-widest">
@@ -109,7 +132,7 @@ export default function ParentView() {
     const localTotal = localSteps.filter(s => s.active).reduce((sum, s) => sum + s.duration, 0);
     
     return (
-      <div className="flex flex-col min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-28">
+      <div className="flex flex-col min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-28">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-black text-foreground flex items-center gap-2">
             <Settings className="w-5 h-5 text-primary" /> Configuration
@@ -141,7 +164,7 @@ export default function ParentView() {
                   <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
                     <Input
                       type="number"
-                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
+                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0 w-full"
                       value={minutes}
                       min={0}
                       max={10}
@@ -152,13 +175,13 @@ export default function ParentView() {
                         setLocalSteps(newSteps);
                       }}
                     />
-                    <span className="text-xs font-bold text-muted-foreground">MIN</span>
+                    <span className="text-xs font-bold text-muted-foreground shrink-0">MIN</span>
                   </div>
                   <span className="font-black text-muted-foreground">:</span>
                   <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
                     <Input
                       type="number"
-                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0"
+                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0 w-full"
                       value={seconds}
                       min={0}
                       max={59}
@@ -169,7 +192,7 @@ export default function ParentView() {
                         setLocalSteps(newSteps);
                       }}
                     />
-                    <span className="text-xs font-bold text-muted-foreground">SEC</span>
+                    <span className="text-xs font-bold text-muted-foreground shrink-0">SEC</span>
                   </div>
                 </div>
               </Card>
@@ -191,7 +214,7 @@ export default function ParentView() {
 
   // --- SCREEN 3: MONITORING ---
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-4">
+    <div className="flex flex-col min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-primary/10 to-background pt-6 px-4 pb-4">
       {/* Header */}
       <div className="text-center mb-4">
         <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">
@@ -229,12 +252,13 @@ export default function ParentView() {
             />
           </div>
           
-          {/* Mini step timers */}
-          <div className="flex justify-between mt-3 gap-1.5">
+          {/* Mini step timers with live adjust */}
+          <div className="flex justify-between mt-3 gap-1">
             {activeSteps.map((step, idx) => {
               const isActive = idx === currentStepIndex;
               const isDone = idx < currentStepIndex;
               const color = STEP_COLORS[step.icon];
+              const canAdjust = (status === "running" || status === "paused") && !isDone;
               
               return (
                 <div key={step.id} className="flex-1 flex flex-col items-center">
@@ -252,6 +276,23 @@ export default function ParentView() {
                   <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[50px] text-center">
                     {step.label.split(" ")[0]}
                   </span>
+                  {/* Live +/- buttons */}
+                  {canAdjust && (
+                    <div className="flex gap-0.5 mt-1">
+                      <button
+                        className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-destructive/20 active:scale-90 transition-transform"
+                        onClick={() => handleLiveAdjust(idx, -30)}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <button
+                        className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-emerald-200 active:scale-90 transition-transform"
+                        onClick={() => handleLiveAdjust(idx, 30)}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
