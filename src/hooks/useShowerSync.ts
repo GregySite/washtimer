@@ -15,7 +15,6 @@ export interface SessionData {
   last_update?: string;
 }
 
-// Edge function URL for validated updates
 const getEdgeFunctionUrl = () => {
   let supabaseUrl = '';
   try {
@@ -43,59 +42,123 @@ async function patchSession(sessionCode: string, updates: Record<string, unknown
   }
 }
 
+// Persistence keys
+const STORAGE_KEY_MODE = 'timewash_mode';
+const STORAGE_KEY_CODE = 'timewash_session_code';
+
 export function useShowerSync(mode: "parent" | "child") {
   const [sessionId, setSessionId] = useState<string>("");
-  const [sessionCode, setSessionCode] = useState<string>("");
+  const [sessionCode, setSessionCode] = useState<string>(() => {
+    // Restore session code from localStorage on mount
+    const savedMode = localStorage.getItem(STORAGE_KEY_MODE);
+    if (savedMode === mode) {
+      return localStorage.getItem(STORAGE_KEY_CODE) || "";
+    }
+    return "";
+  });
   const [status, setStatus] = useState<SessionStatus>("setup");
   const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
-  
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdateRef = useRef<string>("");
-  const lastSyncRef = useRef<number>(0);
 
-  // Calculate total duration from steps
+  // Refs for timer closure - avoids stale state bugs
+  const stepsRef = useRef(steps);
+  const currentStepIndexRef = useRef(currentStepIndex);
+  const statusRef = useRef(status);
+  const sessionCodeRef = useRef(sessionCode);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSyncRef = useRef<number>(0);
+  const lastUpdateRef = useRef<string>("");
+
+  // Keep refs in sync
+  useEffect(() => { stepsRef.current = steps; }, [steps]);
+  useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { sessionCodeRef.current = sessionCode; }, [sessionCode]);
+
+  // Persist session code
+  useEffect(() => {
+    if (sessionCode) {
+      localStorage.setItem(STORAGE_KEY_MODE, mode);
+      localStorage.setItem(STORAGE_KEY_CODE, sessionCode);
+    }
+  }, [sessionCode, mode]);
+
   const calculateTotalDuration = useCallback((stepsToCalc: Step[]) => {
     return stepsToCalc.filter(s => s.active).reduce((sum, s) => sum + s.duration, 0);
   }, []);
 
-  // Create session for child
-  useEffect(() => {
-    if (mode === "child" && !sessionCode) {
-      const createSession = async () => {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        const array = new Uint8Array(6);
-        crypto.getRandomValues(array);
-        const newCode = Array.from(array, b => chars[b % chars.length]).join('');
-        const total = calculateTotalDuration(DEFAULT_STEPS);
-        
-        const { data, error } = await supabase
-          .from("shower_sessions")
-          .insert({
-            session_code: newCode,
-            state: "setup",
-            steps: DEFAULT_STEPS as any,
-            current_step_index: 0,
-            time_remaining: 0,
-            total_duration: total,
-          })
-          .select()
-          .single();
+  // Apply full session data from DB
+  const applySessionData = useCallback((data: any) => {
+    if (!data) return;
+    lastUpdateRef.current = data.last_update || "";
+    setStatus(data.state as SessionStatus);
+    const dbSteps = (data.steps as unknown as Step[]) || DEFAULT_STEPS;
+    setSteps(dbSteps);
+    setCurrentStepIndex(data.current_step_index || 0);
+    setTimeRemaining(data.time_remaining || 0);
+    setTotalDuration(data.total_duration || 0);
+  }, []);
 
-        if (error) {
-          console.error("[SESSION] Creation failed");
-          setTimeout(createSession, 2000);
-        } else if (data) {
-          setSessionId(data.id);
-          setSessionCode(newCode);
-          setTotalDuration(total);
-        }
-      };
-      createSession();
+  // Fetch current session from DB (used for reconnection/visibility)
+  const fetchSession = useCallback(async (code: string) => {
+    const { data } = await supabase
+      .from("shower_sessions")
+      .select("*")
+      .eq("session_code", code)
+      .maybeSingle();
+    if (data) applySessionData(data);
+  }, [applySessionData]);
+
+  // Create session for child (or restore existing)
+  useEffect(() => {
+    if (mode !== "child") return;
+
+    if (sessionCode) {
+      // Restore existing session
+      fetchSession(sessionCode);
+      return;
     }
-  }, [mode, sessionCode, calculateTotalDuration]);
+
+    const createSession = async () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const array = new Uint8Array(6);
+      crypto.getRandomValues(array);
+      const newCode = Array.from(array, b => chars[b % chars.length]).join('');
+      const total = calculateTotalDuration(DEFAULT_STEPS);
+
+      const { data, error } = await supabase
+        .from("shower_sessions")
+        .insert({
+          session_code: newCode,
+          state: "setup",
+          steps: DEFAULT_STEPS as any,
+          current_step_index: 0,
+          time_remaining: 0,
+          total_duration: total,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[SESSION] Creation failed");
+        setTimeout(createSession, 2000);
+      } else if (data) {
+        setSessionId(data.id);
+        setSessionCode(newCode);
+        setTotalDuration(total);
+      }
+    };
+    createSession();
+  }, [mode, sessionCode, calculateTotalDuration, fetchSession]);
+
+  // Restore parent session on mount
+  useEffect(() => {
+    if (mode === "parent" && sessionCode) {
+      fetchSession(sessionCode);
+    }
+  }, [mode]); // intentionally only on mount
 
   // Realtime subscription
   useEffect(() => {
@@ -114,13 +177,7 @@ export function useShowerSync(mode: "parent" | "child") {
         (payload) => {
           const data = payload.new as any;
           if (!data || data.last_update === lastUpdateRef.current) return;
-          
-          lastUpdateRef.current = data.last_update;
-          setStatus(data.state as SessionStatus);
-          setSteps(data.steps || DEFAULT_STEPS);
-          setCurrentStepIndex(data.current_step_index || 0);
-          setTimeRemaining(data.time_remaining || 0);
-          setTotalDuration(data.total_duration || 0);
+          applySessionData(data);
         }
       )
       .subscribe();
@@ -128,67 +185,77 @@ export function useShowerSync(mode: "parent" | "child") {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionCode]);
+  }, [sessionCode, applySessionData]);
 
-  // Timer logic for BOTH modes - local countdown every second
-  // Child mode: syncs to DB every 5 seconds and handles step transitions
-  // Parent mode: local countdown only (realtime updates correct any drift)
+  // Visibility change: re-fetch session when tab becomes visible
+  useEffect(() => {
+    if (!sessionCode) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchSession(sessionCode);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [sessionCode, fetchSession]);
+
+  // Timer logic - uses refs to avoid stale closures
   useEffect(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
-    if (status === "running" && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          const newTime = prev - 1;
-          
-          // Only child syncs to DB
+    if (status !== "running") return;
+
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          // Step complete - only child drives transitions
           if (mode === "child") {
-            // Sync to DB via edge function every 5 seconds
-            const now = Date.now();
-            if (now - lastSyncRef.current >= 5000) {
-              lastSyncRef.current = now;
-              patchSession(sessionCode, { time_remaining: newTime });
-            }
+            const active = stepsRef.current.filter((s) => s.active);
+            const nextIndex = currentStepIndexRef.current + 1;
 
-            // Check if step is complete
-            if (newTime <= 0) {
-              const active = steps.filter((s) => s.active);
-              const nextIndex = currentStepIndex + 1;
+            if (nextIndex < active.length) {
+              const nextStepTime = active[nextIndex].duration;
+              setCurrentStepIndex(nextIndex);
+              currentStepIndexRef.current = nextIndex;
 
-              if (nextIndex < active.length) {
-                const nextStepTime = active[nextIndex].duration;
-                setCurrentStepIndex(nextIndex);
-                setTimeRemaining(nextStepTime);
-                
-                patchSession(sessionCode, {
-                  current_step_index: nextIndex,
-                  time_remaining: nextStepTime,
-                });
-                  
-                return nextStepTime;
-              } else {
-                patchSession(sessionCode, { state: "finished" });
-                setStatus("finished");
-                return 0;
-              }
+              patchSession(sessionCodeRef.current, {
+                current_step_index: nextIndex,
+                time_remaining: nextStepTime,
+              });
+
+              return nextStepTime;
+            } else {
+              setStatus("finished");
+              statusRef.current = "finished";
+              patchSession(sessionCodeRef.current, { state: "finished" });
+              return 0;
             }
           }
-          
-          if (newTime <= 0) return 0;
-          return newTime;
-        });
-      }, 1000);
-    }
+          return 0;
+        }
+
+        const newTime = prev - 1;
+
+        // Child syncs time to DB every 5 seconds
+        if (mode === "child") {
+          const now = Date.now();
+          if (now - lastSyncRef.current >= 5000) {
+            lastSyncRef.current = now;
+            patchSession(sessionCodeRef.current, { time_remaining: newTime });
+          }
+        }
+
+        return newTime;
+      });
+    }, 1000);
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [mode, status, sessionCode, steps, currentStepIndex, timeRemaining]);
+  }, [status, mode]); // minimal deps - rest via refs
 
   // Update session via edge function
   const updateSession = useCallback(
@@ -196,9 +263,7 @@ export function useShowerSync(mode: "parent" | "child") {
       if (!sessionCode) return;
 
       // Update local state immediately
-      if (updates.state) {
-        setStatus(updates.state);
-      }
+      if (updates.state) setStatus(updates.state);
       if (updates.steps) {
         setSteps(updates.steps);
         const newTotal = calculateTotalDuration(updates.steps);
@@ -211,7 +276,7 @@ export function useShowerSync(mode: "parent" | "child") {
         setTimeRemaining(updates.time_remaining);
       }
 
-      // Build payload with only edge-function-allowed fields
+      // Build payload
       const payload: Record<string, unknown> = {};
       if (updates.state) payload.state = updates.state;
       if (updates.current_step_index !== undefined) payload.current_step_index = updates.current_step_index;
@@ -219,8 +284,7 @@ export function useShowerSync(mode: "parent" | "child") {
       if (updates.total_duration !== undefined) payload.total_duration = updates.total_duration;
       if (updates.steps) {
         payload.steps = updates.steps;
-        const newTotal = calculateTotalDuration(updates.steps);
-        payload.total_duration = newTotal;
+        payload.total_duration = calculateTotalDuration(updates.steps);
       }
 
       await patchSession(sessionCode, payload);
@@ -228,10 +292,10 @@ export function useShowerSync(mode: "parent" | "child") {
     [sessionCode, calculateTotalDuration]
   );
 
-  // Join session (parent) - read-only via SELECT is fine
+  // Join session (parent)
   const joinSession = useCallback(async (code: string): Promise<boolean> => {
     const cleanCode = code.trim().toUpperCase();
-    
+
     const { data, error } = await supabase
       .from("shower_sessions")
       .select("*")
@@ -242,31 +306,37 @@ export function useShowerSync(mode: "parent" | "child") {
 
     setSessionId(data.id);
     setSessionCode(cleanCode);
-    setStatus(data.state as SessionStatus);
-    setSteps((data.steps as unknown as Step[]) || DEFAULT_STEPS);
-    setCurrentStepIndex(data.current_step_index || 0);
-    setTimeRemaining(data.time_remaining || 0);
-    setTotalDuration(data.total_duration || 0);
-    
-    return true;
-  }, []);
+    applySessionData(data);
 
-  // Start shower
-  const startShower = useCallback(async () => {
-    const activeSteps = steps.filter((s) => s.active);
+    return true;
+  }, [applySessionData]);
+
+  // Start shower - accepts optional steps override to avoid race condition
+  const startShower = useCallback(async (overrideSteps?: Step[]) => {
+    const stepsToUse = overrideSteps || steps;
+    const activeSteps = stepsToUse.filter((s) => s.active);
     if (activeSteps.length === 0) return;
 
     const firstStepDuration = activeSteps[0].duration;
-    const total = calculateTotalDuration(steps);
+    const total = calculateTotalDuration(stepsToUse);
 
     await updateSession({
       state: "running",
       current_step_index: 0,
       time_remaining: firstStepDuration,
       total_duration: total,
-      steps: steps,
+      steps: stepsToUse,
     });
   }, [steps, updateSession, calculateTotalDuration]);
+
+  // Clear session (for mode switching)
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY_MODE);
+    localStorage.removeItem(STORAGE_KEY_CODE);
+    setSessionCode("");
+    setSessionId("");
+    setStatus("setup");
+  }, []);
 
   return {
     sessionCode,
@@ -279,5 +349,6 @@ export function useShowerSync(mode: "parent" | "child") {
     joinSession,
     startShower,
     setSteps,
+    clearSession,
   };
 }

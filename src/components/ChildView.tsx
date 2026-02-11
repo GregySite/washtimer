@@ -45,7 +45,7 @@ export default function ChildView() {
   // WAITING SCREEN
   if (status === "setup" || status === "waiting" || status === "ready") {
     return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-primary/20 via-background to-secondary/20 flex flex-col items-center justify-center p-4">
+      <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-primary/20 via-background to-secondary/20 flex flex-col items-center justify-center p-4">
         <div className="bg-card/80 backdrop-blur-xl p-8 sm:p-12 rounded-[2rem] border border-border shadow-2xl max-w-sm w-full">
           <h2 className="text-lg font-bold text-muted-foreground mb-4 text-center uppercase tracking-widest">
             Code Magique
@@ -97,7 +97,7 @@ export default function ChildView() {
 
     return (
       <div 
-        className="min-h-[100dvh] flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden transition-colors duration-700"
+        className="min-h-[100dvh] w-full max-w-full overflow-x-hidden flex flex-col items-center justify-center p-4 sm:p-8 relative transition-colors duration-700"
         style={{ 
           background: `linear-gradient(135deg, ${stepColor}20 0%, ${stepColor}05 50%, hsl(210, 40%, 98%) 100%)` 
         }}
@@ -192,7 +192,7 @@ export default function ChildView() {
 
   // FINISHED SCREEN
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-emerald-400 to-teal-500 flex flex-col items-center justify-center p-4 text-white">
+    <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex flex-col items-center justify-center p-4 text-white">
       <div className="text-7xl mb-4 animate-bounce">🎉</div>
       <h2 className="text-4xl sm:text-5xl font-black mb-3 drop-shadow-lg">BRAVO !</h2>
       <p className="text-xl sm:text-2xl font-bold opacity-90">Tu es tout propre ! ✨</p>

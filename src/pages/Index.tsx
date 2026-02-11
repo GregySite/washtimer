@@ -6,7 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Baby, Settings2 } from "lucide-react";
 
 export default function Index() {
-  const [appMode, setAppMode] = useState<'select' | 'parent' | 'child'>('select');
+  const [appMode, setAppMode] = useState<'select' | 'parent' | 'child'>(() => {
+    const saved = localStorage.getItem('timewash_mode');
+    const code = localStorage.getItem('timewash_session_code');
+    if (saved && code && (saved === 'parent' || saved === 'child')) return saved;
+    return 'select';
+  });
 
   if (appMode === 'select') {
     return (
@@ -43,8 +48,12 @@ export default function Index() {
       {appMode === 'parent' ? <ParentView /> : <ChildView />}
       <Button 
         variant="ghost" 
-        className="fixed bottom-2 right-2 opacity-20 hover:opacity-100"
-        onClick={() => setAppMode('select')}
+        className="fixed bottom-2 right-2 opacity-20 hover:opacity-100 z-50"
+        onClick={() => {
+          localStorage.removeItem('timewash_mode');
+          localStorage.removeItem('timewash_session_code');
+          setAppMode('select');
+        }}
       >
         Changer de mode
       </Button>
