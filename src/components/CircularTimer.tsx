@@ -31,7 +31,7 @@ const CircularTimer = ({
   const config = SIZES[size];
   const radius = (config.size - config.stroke) / 2;
   const circumference = radius * 2 * Math.PI;
-  const progress = totalTime > 0 ? timeRemaining / totalTime : 0;
+  const progress = totalTime > 0 ? Math.min(1, Math.max(0, timeRemaining / totalTime)) : 0;
   const offset = circumference * (1 - progress);
 
   const formatTime = (seconds: number) => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useShowerSync } from "@/hooks/useShowerSync";
 import { DEFAULT_STEPS, Step } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,17 @@ export default function ParentView() {
   
   const [sessionInput, setSessionInput] = useState("");
   const [localSteps, setLocalSteps] = useState<Step[]>(DEFAULT_STEPS);
+  const [autoJoinAttempted, setAutoJoinAttempted] = useState(false);
+
+  // Auto-join from QR code deep link
+  useEffect(() => {
+    if (autoJoinAttempted) return;
+    const savedCode = localStorage.getItem('timewash_session_code');
+    if (savedCode && !sessionCode && status === "setup") {
+      setAutoJoinAttempted(true);
+      joinSession(savedCode);
+    }
+  }, [autoJoinAttempted, sessionCode, status, joinSession]);
 
   const activeSteps = steps.filter((s) => s.active);
   const currentStep = activeSteps[currentStepIndex];
