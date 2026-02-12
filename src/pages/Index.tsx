@@ -7,6 +7,18 @@ import { Baby, Settings2 } from "lucide-react";
 
 export default function Index() {
   const [appMode, setAppMode] = useState<'select' | 'parent' | 'child'>(() => {
+    // Check URL params for QR code deep link
+    const params = new URLSearchParams(window.location.search);
+    const urlMode = params.get('mode');
+    const urlCode = params.get('code');
+    if (urlMode === 'parent' && urlCode) {
+      localStorage.setItem('timewash_mode', 'parent');
+      localStorage.setItem('timewash_session_code', urlCode.toUpperCase());
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      return 'parent';
+    }
+
     const saved = localStorage.getItem('timewash_mode');
     const code = localStorage.getItem('timewash_session_code');
     if (saved && code && (saved === 'parent' || saved === 'child')) return saved;
