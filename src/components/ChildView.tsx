@@ -3,6 +3,7 @@ import { Loader2, Droplets, Sparkles, User, Smile, Pause } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { playStepAlert, playFinalTada } from "@/lib/sounds";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 /* ── Step visual config ── */
 const STEP_COLORS: Record<string, string> = {
@@ -236,6 +237,9 @@ export default function ChildView() {
   const activeSteps = steps.filter((s) => s.active);
   const currentStep = activeSteps[currentStepIndex];
   const prevStepIndexRef = useRef(currentStepIndex);
+
+  // Keep screen awake during shower
+  useWakeLock(status === "running" || status === "paused");
 
   // Play sound on step transition
   useEffect(() => {

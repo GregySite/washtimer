@@ -3,9 +3,10 @@ import { useShowerSync } from "@/hooks/useShowerSync";
 import { DEFAULT_STEPS, Step } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Play, Pause, Square, Settings, Droplets, Sparkles, User, Smile, Plus, Minus } from "lucide-react";
+import { Play, Pause, Square, Settings, Droplets, Sparkles, User, Smile, Plus, Minus, ChevronUp, ChevronDown } from "lucide-react";
 import CircularTimer from "./CircularTimer";
+import QrScanner from "./QrScanner";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
   Droplets: <Droplets className="w-6 h-6" />,
@@ -39,6 +40,9 @@ export default function ParentView() {
   const [localSteps, setLocalSteps] = useState<Step[]>(DEFAULT_STEPS);
   const [autoJoinAttempted, setAutoJoinAttempted] = useState(false);
 
+  // Keep screen awake during shower
+  useWakeLock(status === "running" || status === "paused");
+
   // Auto-join from QR code deep link
   useEffect(() => {
     if (autoJoinAttempted) return;
@@ -69,15 +73,20 @@ export default function ParentView() {
     return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
   };
 
-  const handleJoin = async () => {
-    const code = sessionInput.trim().toUpperCase();
-    if (code.length < 6) return;
-    const success = await joinSession(code);
+  const handleJoin = async (code?: string) => {
+    const c = (code || sessionInput).trim().toUpperCase();
+    if (c.length < 4) return;
+    const success = await joinSession(c);
     if (success) {
       await updateSession({ state: "waiting", steps: DEFAULT_STEPS });
     } else {
       alert("Code introuvable !");
     }
+  };
+
+  const handleQrScan = (code: string) => {
+    setSessionInput(code);
+    handleJoin(code);
   };
 
   const handleLaunch = async () => {
@@ -115,21 +124,30 @@ export default function ParentView() {
     return (
       <div className="flex flex-col items-center min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-gradient-to-br from-primary/10 to-background pt-12 px-4 gap-4">
         <h1 className="text-2xl sm:text-3xl font-black text-primary">DOUCHE PARENT 🛁</h1>
-        <Card className="w-full max-w-sm p-6 shadow-xl border-none bg-card rounded-3xl">
+        <Card className="w-full max-w-sm p-6 shadow-xl border-none bg-card rounded-3xl space-y-4">
+          {/* QR Scanner */}
+          <QrScanner onScan={handleQrScan} />
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-bold text-muted-foreground">OU</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
           <label className="text-xs font-bold text-muted-foreground mb-2 block tracking-widest">
             CODE ENFANT
           </label>
-          <Input
-            className="text-center text-3xl sm:text-5xl h-16 sm:h-24 font-mono uppercase font-black mb-4 border-2 border-primary/20 rounded-2xl"
-            placeholder="ABC123"
-            maxLength={6}
+          <input
+            className="w-full text-center text-3xl sm:text-5xl h-16 sm:h-24 font-mono uppercase font-black border-2 border-primary/20 rounded-2xl bg-muted focus:border-primary focus:outline-none transition-colors"
+            placeholder="ABCD"
+            maxLength={4}
             value={sessionInput}
-            onChange={(e) => setSessionInput(e.target.value.toUpperCase())}
+            onChange={(e) => setSessionInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
           />
           <Button
             size="lg"
             className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 rounded-xl"
-            onClick={handleJoin}
+            onClick={() => handleJoin()}
           >
             CONNECTER
           </Button>
@@ -156,54 +174,46 @@ export default function ParentView() {
         <div className="space-y-3">
           {localSteps.map((step, idx) => {
             const color = STEP_COLORS[step.icon] || "hsl(195, 85%, 55%)";
-            const minutes = Math.floor(step.duration / 60);
-            const seconds = step.duration % 60;
+            const minutes = Math.round(step.duration / 60);
 
             return (
               <Card key={step.id} className="p-3 shadow-lg border-none bg-card rounded-2xl">
-                <div className="flex items-center gap-3 mb-3">
-                  <div 
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0"
-                    style={{ backgroundColor: color }}
-                  >
-                    {STEP_ICONS[step.icon] || <Droplets className="w-4 h-4" />}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0"
+                      style={{ backgroundColor: color }}
+                    >
+                      {STEP_ICONS[step.icon] || <Droplets className="w-4 h-4" />}
+                    </div>
+                    <span className="font-bold text-foreground">{step.label}</span>
                   </div>
-                  <span className="font-bold text-foreground">{step.label}</span>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
-                    <Input
-                      type="number"
-                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0 w-full"
-                      value={minutes}
-                      min={0}
-                      max={10}
-                      onChange={(e) => {
-                        const m = parseInt(e.target.value) || 0;
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-destructive/20 active:scale-90 transition-all"
+                      onClick={() => {
                         const newSteps = [...localSteps];
-                        newSteps[idx] = { ...step, duration: m * 60 + seconds };
+                        newSteps[idx] = { ...step, duration: Math.max(60, step.duration - 60) };
                         setLocalSteps(newSteps);
                       }}
-                    />
-                    <span className="text-xs font-bold text-muted-foreground shrink-0">MIN</span>
-                  </div>
-                  <span className="font-black text-muted-foreground">:</span>
-                  <div className="flex items-center gap-2 bg-muted p-2 rounded-xl flex-1">
-                    <Input
-                      type="number"
-                      className="text-center font-mono font-bold text-lg h-9 bg-transparent border-none shadow-none p-0 focus-visible:ring-0 w-full"
-                      value={seconds}
-                      min={0}
-                      max={59}
-                      onChange={(e) => {
-                        const s = parseInt(e.target.value) || 0;
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </button>
+                    <span className="text-2xl font-black font-mono w-12 text-center text-foreground">
+                      {minutes}
+                    </span>
+                    <span className="text-xs font-bold text-muted-foreground">min</span>
+                    <button
+                      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-emerald-200 active:scale-90 transition-all"
+                      onClick={() => {
                         const newSteps = [...localSteps];
-                        newSteps[idx] = { ...step, duration: minutes * 60 + s };
+                        newSteps[idx] = { ...step, duration: Math.min(600, step.duration + 60) };
                         setLocalSteps(newSteps);
                       }}
-                    />
-                    <span className="text-xs font-bold text-muted-foreground shrink-0">SEC</span>
+                    >
+                      <ChevronUp className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </Card>
