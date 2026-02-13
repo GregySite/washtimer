@@ -75,7 +75,7 @@ export default function ParentView() {
 
   const handleJoin = async (code?: string) => {
     const c = (code || sessionInput).trim().toUpperCase();
-    if (c.length < 4) return;
+    if (c.length < 6) return;
     const success = await joinSession(c);
     if (success) {
       await updateSession({ state: "waiting", steps: DEFAULT_STEPS });
@@ -139,10 +139,10 @@ export default function ParentView() {
           </label>
           <input
             className="w-full text-center text-3xl sm:text-5xl h-16 sm:h-24 font-mono uppercase font-black border-2 border-primary/20 rounded-2xl bg-muted focus:border-primary focus:outline-none transition-colors"
-            placeholder="ABCD"
-            maxLength={4}
+            placeholder="ABC123"
+            maxLength={6}
             value={sessionInput}
-            onChange={(e) => setSessionInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            onChange={(e) => setSessionInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6))}
           />
           <Button
             size="lg"
