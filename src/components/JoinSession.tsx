@@ -27,7 +27,7 @@ const JoinSession = ({ onJoin, loading, error }: JoinSessionProps) => {
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    const value = e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6);
     setCode(value);
     setLocalError(null);
   };

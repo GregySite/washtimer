@@ -21,9 +21,18 @@ export default function QrScanner({ onScan }: QrScannerProps) {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
+      // Try back camera first, fall back to any available camera
+      let cameraConfig: any = { facingMode: "environment" };
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          cameraConfig = { deviceId: { exact: devices[0].id } };
+        }
+      } catch {}
+
       await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        cameraConfig,
+        { fps: 10, qrbox: { width: 200, height: 200 } },
         (decodedText) => {
           // Extract session code from URL or raw text
           try {
