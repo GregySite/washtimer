@@ -21,38 +21,47 @@ export default function QrScanner({ onScan }: QrScannerProps) {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
-      // Try back camera first, fall back to any available camera
-      let cameraConfig: any = { facingMode: "environment" };
+      const qrConfig = { fps: 10, qrbox: { width: 200, height: 200 } };
+      const onSuccess = (decodedText: string) => {
+        try {
+          const url = new URL(decodedText);
+          const code = url.searchParams.get("code");
+          if (code) {
+            onScan(code);
+          }
+        } catch {
+          if (decodedText.length >= 4) {
+            onScan(decodedText.toUpperCase());
+          }
+        }
+        stopScanner();
+      };
+      const onError = () => {};
+
+      // Strategy 1: try facingMode environment
+      try {
+        await scanner.start({ facingMode: "environment" }, qrConfig, onSuccess, onError);
+        return;
+      } catch {}
+
+      // Strategy 2: try facingMode user
+      try {
+        await scanner.start({ facingMode: "user" }, qrConfig, onSuccess, onError);
+        return;
+      } catch {}
+
+      // Strategy 3: enumerate cameras and use first one
       try {
         const devices = await Html5Qrcode.getCameras();
         if (devices && devices.length > 0) {
-          cameraConfig = { deviceId: { exact: devices[0].id } };
+          await scanner.start(devices[0].id, qrConfig, onSuccess, onError);
+          return;
         }
       } catch {}
 
-      await scanner.start(
-        cameraConfig,
-        { fps: 10, qrbox: { width: 200, height: 200 } },
-        (decodedText) => {
-          // Extract session code from URL or raw text
-          try {
-            const url = new URL(decodedText);
-            const code = url.searchParams.get("code");
-            if (code) {
-              onScan(code);
-            }
-          } catch {
-            // Not a URL, try raw code
-            if (decodedText.length >= 4) {
-              onScan(decodedText.toUpperCase());
-            }
-          }
-          stopScanner();
-        },
-        () => {} // ignore scan errors
-      );
+      throw new Error("No camera available");
     } catch (err: any) {
-      setError("Impossible d'accéder à la caméra");
+      setError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
       setScanning(false);
     }
   };
